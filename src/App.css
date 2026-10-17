@@ -865,6 +865,10 @@ button > .favorite-icon {
   background: #1f2530;
   box-shadow: 0 14px 34px rgb(0 0 0 / 0.5);
 }
+.picker-list[data-side="top"] {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
 .picker-list[data-align="end"] {
   left: auto;
   right: 0;

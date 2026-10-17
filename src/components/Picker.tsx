@@ -1,5 +1,5 @@
 import { CaretDownIcon } from "@phosphor-icons/react";
-import { type Ref, useEffect, useRef, useState } from "react";
+import { type Ref, useLayoutEffect, useRef, useState } from "react";
 import { navigateControls, pickerInput, useFeatureInput } from "../services";
 
 type PickerOption<V extends string> = { value: V; label: string };
@@ -76,15 +76,28 @@ function PickerList<V extends string>({
 }) {
   const root = useRef<HTMLDivElement>(null);
   const [alignEnd, setAlignEnd] = useState(false);
-  useEffect(() => {
+  const [above, setAbove] = useState(false);
+  // Measured before the first paint, so a flipped list never shows in the wrong place.
+  useLayoutEffect(() => {
     const list = root.current;
     list?.querySelector<HTMLElement>("[aria-selected='true']")?.focus();
+    if (!list) return;
+    const rect = list.getBoundingClientRect();
+    const bounds = list.closest("dialog")?.getBoundingClientRect();
     // Near the right edge (the sort control, a drawer) the list hangs off screen; flip it.
-    if (list) {
-      const rect = list.getBoundingClientRect();
-      const limit = list.closest("dialog")?.getBoundingClientRect().right;
-      setAlignEnd(rect.right > (limit ?? window.innerWidth) - 8);
-    }
+    setAlignEnd(rect.right > (bounds?.right ?? window.innerWidth) - 8);
+    // Near the bottom of whatever clips it (the Library's page size above the footer) it
+    // opens upward, if there is room above.
+    let clip = list.parentElement?.parentElement ?? null;
+    while (clip && getComputedStyle(clip).overflowY === "visible")
+      clip = clip.parentElement;
+    const box = clip?.getBoundingClientRect();
+    const bottom = Math.min(box?.bottom ?? Infinity, window.innerHeight);
+    const top = Math.max(box?.top ?? 0, 0);
+    const trigger = list.parentElement?.getBoundingClientRect();
+    setAbove(
+      rect.bottom > bottom - 8 && (trigger?.top ?? 0) - top > rect.height + 8,
+    );
   }, []);
   // While open, the controller talks only to the list (App routes through pickerInput).
   useFeatureInput(pickerInput, (a) => {
@@ -98,6 +111,7 @@ function PickerList<V extends string>({
       aria-label={label}
       className="picker-list"
       data-align={alignEnd ? "end" : undefined}
+      data-side={above ? "top" : undefined}
       onKeyDown={(e) => {
         if (e.key === "Escape") {
           // Also keeps a surrounding <dialog> from treating it as its own cancel.
