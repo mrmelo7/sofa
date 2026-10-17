@@ -274,6 +274,17 @@ export type Preferences = {
   animatedBackgrounds: boolean;
 };
 export const pageSizes = [15, 30, 60] as const;
+/** The app a store's games start through; custom programs start on their own. */
+export const launcherName = (source: Game["source"]) =>
+  source === "steam"
+    ? "Steam"
+    : source === "epic"
+      ? "Epic Games"
+      : source === "gog"
+        ? "GOG Galaxy"
+        : source === "xbox"
+          ? "Xbox"
+          : undefined;
 const sorts: Preferences["sort"][] = [
   "recent",
   "mostPlayed",

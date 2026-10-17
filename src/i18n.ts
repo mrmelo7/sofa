@@ -386,6 +386,10 @@ const en = {
     "No games found. Connect Steam or Epic in Settings, or install a game.",
   homeNoInstalled: "Nothing installed yet. Open the library to install a game.",
   launchingGame: "Starting the game…",
+  launchStarting: "Starting via {launcher}…",
+  launchPreparing: "Getting the game ready via {launcher}…",
+  launchSlow: "Taking a while? The launcher may be updating or syncing saves.",
+  launchBack: "Back to Sofa",
   gameHidden: "{title} hidden. Undo in Settings → Library.",
   gameRestored: "{title} is back in your library.",
   launchFailed: "Couldn’t launch {title}: {error}",
@@ -796,6 +800,11 @@ const dicts = {
     homeNoInstalled:
       "Nada instalado ainda. Abra a biblioteca para instalar um jogo.",
     launchingGame: "Abrindo o jogo…",
+    launchStarting: "Abrindo via {launcher}…",
+    launchPreparing: "Preparando o jogo via {launcher}…",
+    launchSlow:
+      "Demorando? O launcher pode estar atualizando ou sincronizando saves.",
+    launchBack: "Voltar ao Sofa",
     gameHidden: "{title} oculto. Desfaça em Configurações → Biblioteca.",
     gameRestored: "{title} voltou para a sua biblioteca.",
     launchFailed: "Não deu para abrir {title}: {error}",
@@ -1203,6 +1212,11 @@ const dicts = {
     homeNoInstalled:
       "Nada instalado todavía. Abre la biblioteca para instalar un juego.",
     launchingGame: "Iniciando el juego…",
+    launchStarting: "Abriendo vía {launcher}…",
+    launchPreparing: "Preparando el juego vía {launcher}…",
+    launchSlow:
+      "¿Tarda? El launcher puede estar actualizando o sincronizando partidas.",
+    launchBack: "Volver a Sofa",
     gameHidden: "{title} oculto. Deshazlo en Configuración → Biblioteca.",
     gameRestored: "{title} volvió a tu biblioteca.",
     launchFailed: "No se pudo abrir {title}: {error}",

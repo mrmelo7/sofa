@@ -3878,6 +3878,14 @@ footer kbd {
 .launch-content p {
   color: var(--muted);
 }
+.launch-content .launch-note {
+  max-width: 420px;
+  font-size: 14px;
+  animation: launch-in 0.3s ease-out;
+}
+.launch-content button {
+  margin-top: 8px;
+}
 .loading {
   display: grid;
   justify-items: center;
@@ -4047,7 +4055,8 @@ footer kbd {
   .sofa-loading-cushions,
   .sofa-loading-arm,
   .sofa-loading-buttons > g,
-  .launch-screen {
+  .launch-screen,
+  .launch-note {
     animation: none;
   }
 }

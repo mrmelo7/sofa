@@ -168,6 +168,10 @@ pub(crate) fn keep_sofa_in_front(app: tauri::AppHandle) {
                 log::info(&app, format!("launch: {exe} took the foreground"));
                 break;
             }
+            if !announced {
+                announced = true;
+                let _ = app.emit("launch-progress", ());
+            }
             // The launcher's own window, just reported by Windows.
             unsafe { ShowWindow(hwnd, SW_MINIMIZE) };
             let _ = bring_to_front(&app);

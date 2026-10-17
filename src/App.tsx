@@ -39,6 +39,7 @@ import {
   filterGames,
   type Game,
   hero,
+  launcherName,
   pageSizes,
   parsePreferences,
   tasteWeights,
@@ -283,16 +284,22 @@ export default function App() {
   const [storeModal, setStoreModal] = useState(false);
   const [storeTab, setStoreTab] = useState<StoreTab>("discover");
   const [launchScreen, setLaunchScreen] = useState<Game | null>(null);
+  const [launchPreparing, setLaunchPreparing] = useState(false);
   // The launch screen stays until the game itself is in front. Losing focus isn't enough: the
   // launcher takes it first and Rust hands it back. Rust gives up after 90 s and says so too.
   useEffect(() => {
     if (!launchScreen) return;
+    setLaunchPreparing(false);
     const done = () => setLaunchScreen(null);
     const timeout = setTimeout(done, 95_000);
     const settled = isTauri() ? listen("launch-settled", done) : undefined;
+    const progress = isTauri()
+      ? listen("launch-progress", () => setLaunchPreparing(true))
+      : undefined;
     return () => {
       clearTimeout(timeout);
       settled?.then((unlisten) => unlisten());
+      progress?.then((unlisten) => unlisten());
     };
   }, [launchScreen]);
   const powerInput: InputRef = useRef(null);
@@ -750,12 +757,7 @@ export default function App() {
       setStatus(
         t("installRequested", {
           title: game.title,
-          launcher:
-            game.source === "epic"
-              ? "Epic Games"
-              : game.source === "gog"
-                ? "GOG Galaxy"
-                : "Steam",
+          launcher: launcherName(game.source) ?? "Steam",
         }),
       );
     } catch (error) {
@@ -783,7 +785,8 @@ export default function App() {
       return;
     }
     if (launchScreen) {
-      if (a === "b") setLaunchScreen(null);
+      // Its only control is "Back to Sofa": A presses it, B means the same.
+      if (a === "a" || a === "b") setLaunchScreen(null);
       return;
     }
     if (searchOpen) {
@@ -929,7 +932,7 @@ export default function App() {
   // The library's collection title is its page heading; on Home the hero title is.
   const CollectionHeading = page === "library" ? "h1" : "h2";
   const hints: [string, string][] = launchScreen
-    ? [["B", t("close")]]
+    ? [["B", t("launchBack")]]
     : details
       ? [
           ["A", t("selectAction")],
@@ -1600,7 +1603,14 @@ export default function App() {
             )}
           </HintBar>
         </footer>
-        {launchScreen && <LaunchScreen game={launchScreen} t={t} />}
+        {launchScreen && (
+          <LaunchScreen
+            game={launchScreen}
+            preparing={launchPreparing}
+            t={t}
+            onBack={() => setLaunchScreen(null)}
+          />
+        )}
         {searchOpen && (
           <Search
             origin={searchOrigin.current}
