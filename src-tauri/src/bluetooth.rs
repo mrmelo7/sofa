@@ -244,8 +244,8 @@ pub async fn bluetooth_unpair(id: String, app: tauri::AppHandle) -> Result<(), S
 
 /// Windows' own Bluetooth page, for anything the ceremony above can't do.
 #[tauri::command]
-pub async fn open_bluetooth_settings() -> Result<(), String> {
-    tauri_plugin_opener::open_url("ms-settings:bluetooth", None::<&str>).map_err(|_| "openFailed".into())
+pub async fn open_bluetooth_settings(app: tauri::AppHandle) -> Result<(), String> {
+    crate::open_settings_page(&app, "ms-settings:bluetooth")
 }
 
 #[cfg(test)]

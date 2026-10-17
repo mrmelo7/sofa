@@ -31,6 +31,6 @@ pub async fn storage_status() -> Vec<Disk> {
 
 /// Windows' own storage page handles cleanup; Sofa only shows the numbers.
 #[tauri::command]
-pub async fn open_storage_settings() -> Result<(), String> {
-    tauri_plugin_opener::open_url("ms-settings:storagesense", None::<&str>).map_err(|_| "openFailed".into())
+pub async fn open_storage_settings(app: tauri::AppHandle) -> Result<(), String> {
+    crate::open_settings_page(&app, "ms-settings:storagesense")
 }

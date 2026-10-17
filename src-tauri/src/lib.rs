@@ -52,8 +52,6 @@ fn is_launcher(exe: &str) -> bool {
 /// File name of the process that owns the foreground window, and that window.
 #[cfg(windows)]
 pub(crate) fn foreground() -> Option<(String, windows_sys::Win32::Foundation::HWND)> {
-    use windows_sys::Win32::Foundation::CloseHandle;
-    use windows_sys::Win32::System::Threading::{OpenProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW};
     use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
     // No arguments; returns null when nothing has the foreground.
     let hwnd = unsafe { GetForegroundWindow() };
@@ -66,6 +64,14 @@ pub(crate) fn foreground() -> Option<(String, windows_sys::Win32::Foundation::HW
     if pid == std::process::id() {
         return Some(("sofa".into(), hwnd));
     }
+    Some((process_name(pid)?, hwnd))
+}
+
+/// File name of process `pid`'s executable.
+#[cfg(windows)]
+fn process_name(pid: u32) -> Option<String> {
+    use windows_sys::Win32::Foundation::CloseHandle;
+    use windows_sys::Win32::System::Threading::{OpenProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW};
     // Query-only access to read the image name.
     let process = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
     if process.is_null() {
@@ -81,19 +87,77 @@ pub(crate) fn foreground() -> Option<(String, windows_sys::Win32::Foundation::HW
         return None;
     }
     let path = String::from_utf16_lossy(&buffer[..size as usize]);
-    Some((path.rsplit('\\').next().unwrap_or_default().to_owned(), hwnd))
+    Some(path.rsplit('\\').next().unwrap_or_default().to_owned())
+}
+
+/// Opens a page of Windows Settings (`ms-settings:…`). When Settings is already open, Windows
+/// switches the page but may leave the window behind Sofa; bring it to the front.
+pub(crate) fn open_settings_page(app: &tauri::AppHandle, uri: &'static str) -> Result<(), String> {
+    tauri_plugin_opener::open_url(uri, None::<&str>).map_err(|_| "openFailed")?;
+    #[cfg(windows)]
+    {
+        let app = app.clone();
+        std::thread::spawn(move || {
+            for _ in 0..20 {
+                std::thread::sleep(std::time::Duration::from_millis(150));
+                if let Some(window) = settings_window() {
+                    use windows_sys::Win32::UI::WindowsAndMessaging::{SW_RESTORE, SetForegroundWindow, ShowWindow};
+                    // A top-level window Windows just enumerated; Sofa is in front, so it may hand
+                    // the foreground over.
+                    unsafe { ShowWindow(window, SW_RESTORE) };
+                    let raised = unsafe { SetForegroundWindow(window) } != 0;
+                    log::info(&app, format!("settings: {uri} brought to front: {raised}"));
+                    return;
+                }
+            }
+            log::info(&app, format!("settings: {uri} window not found"));
+        });
+    }
+    #[cfg(not(windows))]
+    let _ = app;
+    Ok(())
+}
+
+/// The Settings app's frame: a UWP `ApplicationFrameWindow` whose content (`CoreWindow`)
+/// belongs to SystemSettings.exe.
+#[cfg(windows)]
+fn settings_window() -> Option<windows_sys::Win32::Foundation::HWND> {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{FindWindowExW, GetWindowThreadProcessId};
+    let frame_class: Vec<u16> = "ApplicationFrameWindow\0".encode_utf16().collect();
+    let content_class: Vec<u16> = "Windows.UI.Core.CoreWindow\0".encode_utf16().collect();
+    let mut frame = std::ptr::null_mut();
+    loop {
+        // Next top-level frame after `frame`; class names are null-terminated above.
+        frame = unsafe { FindWindowExW(std::ptr::null_mut(), frame, frame_class.as_ptr(), std::ptr::null()) };
+        if frame.is_null() {
+            return None;
+        }
+        // The frame's content window, if it is attached.
+        let content = unsafe { FindWindowExW(frame, std::ptr::null_mut(), content_class.as_ptr(), std::ptr::null()) };
+        if content.is_null() {
+            continue;
+        }
+        let mut pid = 0u32;
+        // `content` was just returned by Windows; `pid` outlives the call.
+        unsafe { GetWindowThreadProcessId(content, &mut pid) };
+        if process_name(pid).is_some_and(|exe| exe.eq_ignore_ascii_case("SystemSettings.exe")) {
+            return Some(frame);
+        }
+    }
 }
 
 /// After a launch request, the launcher (Steam, Epic…) jumps in front of Sofa. Push it down and
 /// bring Sofa back until the game itself takes the foreground, so closing the game returns to
 /// Sofa. Gives up after 90 s or as soon as anything else (the game, the user) is in front, and
-/// then tells the launch screen with `launch-settled`.
+/// then tells the launch screen with `launch-settled`; `launch-progress` says the launcher showed
+/// up, so the screen can say it is preparing the game.
 #[cfg(windows)]
 pub(crate) fn keep_sofa_in_front(app: tauri::AppHandle) {
     use tauri::Emitter;
     use windows_sys::Win32::UI::WindowsAndMessaging::{SW_MINIMIZE, ShowWindow};
     std::thread::spawn(move || {
         let started = std::time::Instant::now();
+        let mut announced = false;
         while started.elapsed() < std::time::Duration::from_secs(90) {
             std::thread::sleep(std::time::Duration::from_millis(400));
             let Some((exe, hwnd)) = foreground() else { continue };
