@@ -143,6 +143,36 @@ fn controllers() -> Vec<ControllerBattery> {
     }
     found
 }
+/// Rumbles controller `index` (1-4, as `power_status` numbers them) for half a second, so the
+/// player knows which one it is.
+#[tauri::command]
+pub async fn identify_controller(index: u32) -> Result<(), String> {
+    if !(1..=4).contains(&index) {
+        return Err("invalidInput".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || rumble(index - 1))
+        .await
+        .map_err(|_| "settingUnavailable".to_string())?
+}
+#[cfg(windows)]
+fn rumble(slot: u32) -> Result<(), String> {
+    use windows_sys::Win32::UI::Input::XboxController::{XINPUT_VIBRATION, XInputSetState};
+    let set = |speed| {
+        let vibration = XINPUT_VIBRATION { wLeftMotorSpeed: speed, wRightMotorSpeed: speed };
+        // Slot 0..3, checked by the caller; reads exactly this SDK structure.
+        unsafe { XInputSetState(slot, &vibration) }
+    };
+    if set(42_000) != 0 {
+        return Err("controllerDisconnected".into());
+    }
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    set(0);
+    Ok(())
+}
+#[cfg(not(windows))]
+fn rumble(_slot: u32) -> Result<(), String> {
+    Err("settingUnavailable".into())
+}
 #[cfg(not(windows))]
 fn controllers() -> Vec<ControllerBattery> {
     vec![]

@@ -10,6 +10,7 @@ import {
   EyeIcon,
   FileTextIcon,
   FolderIcon,
+  LinkBreakIcon,
   MagnifyingGlassIcon,
   MonitorPlayIcon,
   PlayIcon,
@@ -20,6 +21,7 @@ import {
   SpeakerHighIcon,
   SpeakerSlashIcon,
   TrashIcon,
+  VibrateIcon,
   XIcon,
 } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -50,6 +52,7 @@ import {
 } from "../services";
 import { type Provider, providers, type useLibrary } from "../useLibrary";
 import type { useUpdates } from "../useUpdates";
+import { usePower } from "./Power";
 
 export type SettingsPanel =
   | "library"
@@ -631,8 +634,12 @@ export function AppsSettings({ t, notify }: { t: Translate; notify: Notify }) {
 }
 
 type Found = { id: string; name: string };
+type Paired = Found & { connected: boolean };
 
-/** Bluetooth pairing through Windows' device enumeration; the controller must be in pairing mode. */
+/**
+ * Every controller in one place: the ones connected now (battery, and a rumble to tell which
+ * is which), the Bluetooth ones Windows remembers (unpair), and pairing a new one.
+ */
 export function ControllerSettings({
   t,
   notify,
@@ -640,6 +647,27 @@ export function ControllerSettings({
   t: Translate;
   notify: Notify;
 }) {
+  const controllers = usePower().data?.controllers ?? [];
+  const paired = useQuery({
+    ...commandQuery<Paired[]>("bluetooth_paired"),
+    refetchInterval: 5000,
+  });
+  const identify = useMutation({
+    mutationFn: (index: number) => invoke("identify_controller", { index }),
+    onError: (error) => notify(serviceError(error)),
+  });
+  // Unpairing the controller in hand would strand the player: the first press only arms it.
+  const [armed, setArmed] = useState<string>();
+  const unpair = useMutation({
+    mutationFn: (device: Paired) =>
+      invoke("bluetooth_unpair", { id: device.id }).then(() => device),
+    onSuccess: (device) => {
+      notify("bluetoothUnpaired", { name: device.name });
+      void paired.refetch();
+    },
+    onError: (error) => notify(serviceError(error)),
+    onSettled: () => setArmed(undefined),
+  });
   const scan = useMutation({
     mutationFn: () => invoke<Found[]>("bluetooth_scan"),
     onError: (error) => notify(serviceError(error)),
@@ -656,6 +684,90 @@ export function ControllerSettings({
   const busy = scan.isPending || pair.isPending;
   return (
     <>
+      <section aria-label={t("controllersNow")}>
+        <h2>{t("controllersNow")}</h2>
+        {controllers.length === 0 ? (
+          <p className="muted">{t("controllersNone")}</p>
+        ) : (
+          <ul className="item-list">
+            {controllers.map((c) => (
+              <ItemRow
+                key={c.index}
+                name={
+                  <>
+                    {t("controllerNumber", { index: String(c.index) })}
+                    <small className="muted">
+                      {c.level === "wired"
+                        ? t("controller_wired")
+                        : `${t("controllerWireless")} · ${t(`controller_${c.level}` as MessageKey)}`}
+                    </small>
+                  </>
+                }
+              >
+                <button
+                  aria-busy={
+                    identify.isPending && identify.variables === c.index
+                  }
+                  onClick={() =>
+                    !identify.isPending && identify.mutate(c.index)
+                  }
+                >
+                  <VibrateIcon />
+                  {t("controllerIdentify")}
+                </button>
+              </ItemRow>
+            ))}
+          </ul>
+        )}
+      </section>
+      <section aria-label={t("bluetoothPairedHeading")}>
+        <h2>{t("bluetoothPairedHeading")}</h2>
+        {!paired.data?.length ? (
+          <p className="muted">{t("bluetoothNonePaired")}</p>
+        ) : (
+          <ul className="item-list">
+            {paired.data.map((device) => (
+              <ItemRow
+                key={device.id}
+                name={
+                  <>
+                    {device.name}
+                    <small className="muted">
+                      {t(
+                        device.connected
+                          ? "bluetoothConnected"
+                          : "bluetoothDisconnected",
+                      )}
+                    </small>
+                  </>
+                }
+              >
+                <button
+                  aria-busy={
+                    unpair.isPending && unpair.variables?.id === device.id
+                  }
+                  onBlur={() => armed === device.id && setArmed(undefined)}
+                  onClick={() => {
+                    if (unpair.isPending) return;
+                    if (armed === device.id) unpair.mutate(device);
+                    else setArmed(device.id);
+                  }}
+                >
+                  <LinkBreakIcon />
+                  {t(
+                    unpair.isPending && unpair.variables?.id === device.id
+                      ? "bluetoothUnpairing"
+                      : armed === device.id
+                        ? "bluetoothUnpairConfirm"
+                        : "bluetoothUnpair",
+                  )}
+                </button>
+              </ItemRow>
+            ))}
+          </ul>
+        )}
+      </section>
+      <h2>{t("bluetoothPairNew")}</h2>
       <p className="muted">{t("bluetoothIntro")}</p>
       <button
         data-initial-focus

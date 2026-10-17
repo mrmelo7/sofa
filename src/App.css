@@ -801,9 +801,22 @@ button > .favorite-icon {
 }
 .source-tabs button span {
   margin-left: 8px;
-  color: var(--muted);
-  font-size: 13px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.12);
+  color: #d1d4dc;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
+}
+.source-tabs button[aria-pressed="true"] span {
+  background: var(--accent);
+  color: #fff;
+}
+/* A row's second line: a controller's connection and battery, a device's state. */
+.item-list li > span:first-child small {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
 }
 .source-tabs button[aria-pressed="true"]::after {
   content: "";
@@ -3313,38 +3326,16 @@ dialog.dialog-ghost {
 .system-bar .controller-status {
   display: flex;
   width: auto;
-  min-width: 64px;
   align-items: center;
   gap: 5px;
   padding: 8px;
-}
-.controller-marker {
-  display: flex;
-  position: relative;
-}
-.controller-marker small {
-  position: absolute;
-  bottom: -4px;
-  right: -3px;
-  font-size: 10px;
-  background: #222833;
-  line-height: 1;
-  padding: 2px;
-  border-radius: 3px;
+  font-variant-numeric: tabular-nums;
 }
 .system-bar .controller-charge {
   width: 18px;
 }
-.controller-level {
-  font-size: 10px;
-}
 .top-batteries [data-low="true"] {
   color: #ffbf88;
-}
-.system-bar .controller-overflow {
-  width: auto;
-  min-width: 44px;
-  font-variant-numeric: tabular-nums;
 }
 @media (max-width: 1000px) {
   .system-bar {
@@ -3442,7 +3433,6 @@ dialog.dialog-ghost {
     gap: 0;
   }
   .system-bar .controller-status {
-    min-width: 52px;
     padding: 6px;
     gap: 2px;
   }

@@ -237,10 +237,12 @@ export function TopBatteries({
   t,
   data,
   onOpen,
+  onControllers,
 }: {
   t: Translate;
   data: PowerStatus | null;
   onOpen: () => void;
+  onControllers: () => void;
 }) {
   const battery = data?.batteries[0];
   const percent = battery?.charge_percent;
@@ -260,12 +262,10 @@ export function TopBatteries({
               ? BatteryHighIcon
               : BatteryFullIcon;
   const controllers = data?.controllers ?? [];
-  const icons: Record<string, typeof BatteryFullIcon> = {
-    empty: BatteryEmptyIcon,
-    low: BatteryLowIcon,
-    medium: BatteryMediumIcon,
-    full: BatteryFullIcon,
-  };
+  // One icon for every controller; a low battery icon joins it when any of them runs low.
+  const low = controllers.filter(
+    (c) => c.level === "low" || c.level === "empty",
+  ).length;
   return (
     // biome-ignore lint/a11y/useSemanticElements: a labelled group of buttons, not form fields (<fieldset>).
     <div
@@ -283,44 +283,22 @@ export function TopBatteries({
         <DeviceIcon />
         <span>{percent == null ? "—" : `${Math.round(percent)}%`}</span>
       </button>
-      {controllers.slice(0, 2).map((controller) => {
-        const Icon = icons[controller.level] ?? BatteryEmptyIcon;
-        const description = `${t("controllerNumber", { index: String(controller.index) })}: ${t(`controller_${controller.level}` as Parameters<Translate>[0])}`;
-        return (
-          <button
-            key={controller.index}
-            className="controller-status"
-            onClick={onOpen}
-            aria-label={description}
-            title={description}
-            data-low={
-              controller.level === "low" || controller.level === "empty"
-            }
-          >
-            <span className="controller-marker">
-              <GameControllerIcon />
-              <small>{controller.index}</small>
-            </span>
-            {controller.level === "wired" ? (
-              <span className="controller-level">USB</span>
-            ) : controller.level === "unknown" ? (
-              <span className="controller-level">?</span>
-            ) : (
-              <Icon className="controller-charge" />
-            )}
-          </button>
-        );
-      })}
-      {controllers.length > 2 && (
+      {controllers.length > 0 && (
         <button
-          className="controller-overflow"
-          onClick={onOpen}
-          aria-label={t("moreControllers", {
-            count: String(controllers.length - 2),
-          })}
-          title={t("controllerBattery")}
+          className="controller-status"
+          onClick={onControllers}
+          aria-label={[
+            t("controllersConnected", { count: String(controllers.length) }),
+            low && t("controllersLowBattery", { count: String(low) }),
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+          title={t("controllers")}
+          data-low={low > 0}
         >
-          +{controllers.length - 2}
+          <GameControllerIcon />
+          <span>{controllers.length}</span>
+          {low > 0 && <BatteryLowIcon className="controller-charge" />}
         </button>
       )}
     </div>

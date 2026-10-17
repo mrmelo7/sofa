@@ -91,6 +91,95 @@ fn pair(id: &str) -> Result<(), String> {
     }
 }
 
+/// A controller Windows has paired: gamepads and joysticks only, so headphones and keyboards
+/// never get an unpair button here.
+#[derive(Serialize, Clone, PartialEq, Debug)]
+pub struct Paired {
+    /// Windows device id; opaque to the UI, which only hands it back to `bluetooth_unpair`.
+    id: String,
+    name: String,
+    connected: bool,
+}
+
+#[cfg(windows)]
+fn paired() -> Result<Vec<Paired>, String> {
+    use windows::Devices::Bluetooth::{
+        BluetoothConnectionStatus, BluetoothDevice, BluetoothLEAppearanceCategories,
+        BluetoothLEAppearanceSubcategories, BluetoothLEDevice, BluetoothMajorClass,
+    };
+    use windows::Devices::Enumeration::DeviceInformation;
+    init_winrt();
+    let unavailable = |_| "settingUnavailable".to_string();
+    let list = |selector: windows::core::Result<windows::core::HSTRING>| -> Result<Vec<String>, String> {
+        let devices = DeviceInformation::FindAllAsyncAqsFilter(&selector.map_err(unavailable)?)
+            .and_then(|operation| operation.join())
+            .map_err(unavailable)?;
+        Ok((0..devices.Size().map_err(unavailable)?)
+            .filter_map(|index| devices.GetAt(index).and_then(|d| d.Id()).ok().map(|id| id.to_string()))
+            .collect())
+    };
+    let mut found = Vec::new();
+    // Classic Bluetooth (DualSense, most third-party pads): a peripheral whose minor class
+    // is joystick (1) or gamepad (2); the upper bits only add keyboard or pointer.
+    for id in list(BluetoothDevice::GetDeviceSelectorFromPairingState(true))? {
+        let Ok(device) = BluetoothDevice::FromIdAsync(&id.as_str().into()).and_then(|o| o.join()) else { continue };
+        let Ok(class) = device.ClassOfDevice() else { continue };
+        let gamepad = class.MajorClass().is_ok_and(|major| major == BluetoothMajorClass::Peripheral)
+            && class.MinorClass().is_ok_and(|minor| matches!(minor.0 & 0xf, 1 | 2));
+        if gamepad {
+            let connected = device.ConnectionStatus().is_ok_and(|s| s == BluetoothConnectionStatus::Connected);
+            found.push((id, device.Name().map(|n| n.to_string()).unwrap_or_default(), connected));
+        }
+    }
+    // Bluetooth Low Energy (Xbox controllers): HID appearance, gamepad or joystick.
+    let hid = BluetoothLEAppearanceCategories::HumanInterfaceDevice().map_err(unavailable)?;
+    let kinds = [BluetoothLEAppearanceSubcategories::Gamepad(), BluetoothLEAppearanceSubcategories::Joystick()];
+    for id in list(BluetoothLEDevice::GetDeviceSelectorFromPairingState(true))? {
+        let Ok(device) = BluetoothLEDevice::FromIdAsync(&id.as_str().into()).and_then(|o| o.join()) else { continue };
+        let Ok(appearance) = device.Appearance() else { continue };
+        let gamepad = appearance.Category().is_ok_and(|c| c == hid)
+            && appearance.SubCategory().is_ok_and(|sub| kinds.iter().any(|k| k.as_ref().is_ok_and(|k| *k == sub)));
+        if gamepad {
+            let connected = device.ConnectionStatus().is_ok_and(|s| s == BluetoothConnectionStatus::Connected);
+            found.push((id, device.Name().map(|n| n.to_string()).unwrap_or_default(), connected));
+        }
+    }
+    Ok(found
+        .into_iter()
+        .filter(|(_, name, _)| !name.trim().is_empty())
+        .map(|(id, name, connected)| Paired { id, name: name.trim().to_owned(), connected })
+        .collect())
+}
+
+#[cfg(windows)]
+fn unpair(id: &str) -> Result<(), String> {
+    use windows::Devices::Enumeration::{DeviceInformation, DeviceUnpairingResultStatus};
+    init_winrt();
+    let failed = |_| "bluetoothUnpairFailed".to_string();
+    let status = DeviceInformation::CreateFromIdAsync(&id.into())
+        .and_then(|operation| operation.join())
+        .and_then(|device| device.Pairing())
+        .and_then(|pairing| pairing.UnpairAsync())
+        .and_then(|operation| operation.join())
+        .and_then(|result| result.Status())
+        .map_err(failed)?;
+    if status == DeviceUnpairingResultStatus::Unpaired || status == DeviceUnpairingResultStatus::AlreadyUnpaired {
+        Ok(())
+    } else {
+        Err(format!("bluetoothUnpairFailed:{}", status.0))
+    }
+}
+
+#[cfg(not(windows))]
+fn paired() -> Result<Vec<Paired>, String> {
+    Err("settingUnavailable".into())
+}
+
+#[cfg(not(windows))]
+fn unpair(_id: &str) -> Result<(), String> {
+    Err("settingUnavailable".into())
+}
+
 #[cfg(not(windows))]
 fn scan() -> Result<Vec<Found>, String> {
     Err("settingUnavailable".into())
@@ -130,6 +219,27 @@ pub async fn bluetooth_pair(id: String, app: tauri::AppHandle, state: tauri::Sta
         return Err("bluetoothPairFailed".into());
     }
     Ok(())
+}
+
+#[tauri::command]
+pub async fn bluetooth_paired() -> Result<Vec<Paired>, String> {
+    tauri::async_runtime::spawn_blocking(paired)
+        .await
+        .map_err(|_| "settingUnavailable".to_string())?
+}
+
+/// Takes an id from `bluetooth_paired` and checks it is still a paired controller, so the
+/// webview can't unpair anything else.
+#[tauri::command]
+pub async fn bluetooth_unpair(id: String, app: tauri::AppHandle) -> Result<(), String> {
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let device = paired()?.into_iter().find(|d| d.id == id).ok_or("invalidInput")?;
+        crate::log::info(&app, format!("bluetooth: unpairing {:?}", device.name));
+        unpair(&device.id).inspect_err(|error| crate::log::info(&app, format!("bluetooth: unpairing failed: {error}")))
+    })
+    .await
+    .map_err(|_| "settingUnavailable".to_string())?;
+    result.map_err(|error| if error == "invalidInput" { error } else { "bluetoothUnpairFailed".into() })
 }
 
 /// Windows' own Bluetooth page, for anything the ceremony above can't do.

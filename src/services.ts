@@ -294,6 +294,8 @@ const serviceErrors: MessageKey[] = [
   "epicSessionExpired",
   "settingUnavailable",
   "bluetoothPairFailed",
+  "bluetoothUnpairFailed",
+  "controllerDisconnected",
   "restartRequired",
   "noGameRunning",
   "closeGameFailed",
