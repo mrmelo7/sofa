@@ -7,8 +7,10 @@ import {
   BatteryHighIcon,
   BatteryLowIcon,
   BatteryMediumIcon,
+  BatteryWarningIcon,
   GameControllerIcon,
   MoonIcon,
+  PlugIcon,
   PowerIcon,
   XIcon,
 } from "@phosphor-icons/react";
@@ -55,6 +57,33 @@ export function usePower() {
   });
   return { data: data ?? null, error: queryError(error) };
 }
+/**
+ * A controller's charge as a battery that fills with the level, the way consoles show it; a
+ * plug when it runs on the cable. Low and empty take the warning colour. Decorative: the
+ * level is also written next to it.
+ */
+export function ControllerCharge({ level }: { level: string }) {
+  const Icon =
+    level === "wired"
+      ? PlugIcon
+      : level === "full"
+        ? BatteryFullIcon
+        : level === "medium"
+          ? BatteryMediumIcon
+          : level === "low"
+            ? BatteryLowIcon
+            : level === "empty"
+              ? BatteryEmptyIcon
+              : BatteryWarningIcon;
+  return (
+    <Icon
+      className="controller-charge-icon"
+      data-low={level === "low" || level === "empty"}
+      weight="fill"
+      aria-hidden
+    />
+  );
+}
 /** Controller batteries (XInput); the device battery lives in the top bar and HUD pill. */
 export function ControllerBatteries({
   t,
@@ -86,7 +115,10 @@ export function ControllerBatteries({
               <GameControllerIcon size={32} />
               <div>
                 <h3>{t("controllerNumber", { index: String(c.index) })}</h3>
-                <p>{t(`controller_${c.level}` as Parameters<Translate>[0])}</p>
+                <p>
+                  <ControllerCharge level={c.level} />
+                  {t(`controller_${c.level}` as Parameters<Translate>[0])}
+                </p>
               </div>
             </article>
           ))}

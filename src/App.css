@@ -3414,6 +3414,16 @@ dialog.dialog-ghost {
 .system-bar .controller-charge {
   width: 18px;
 }
+/* The battery glyph sits on the text line it illustrates. */
+.controller-charge-icon {
+  width: 1.35em;
+  height: 1.35em;
+  margin-right: 6px;
+  vertical-align: -0.3em;
+}
+.controller-charge-icon[data-low="true"] {
+  color: #ffbf88;
+}
 .top-batteries [data-low="true"] {
   color: #ffbf88;
 }

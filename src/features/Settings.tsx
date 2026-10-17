@@ -52,7 +52,7 @@ import {
 } from "../services";
 import { type Provider, providers, type useLibrary } from "../useLibrary";
 import type { useUpdates } from "../useUpdates";
-import { usePower } from "./Power";
+import { ControllerCharge, usePower } from "./Power";
 
 export type SettingsPanel =
   | "library"
@@ -697,6 +697,7 @@ export function ControllerSettings({
                   <>
                     {t("controllerNumber", { index: String(c.index) })}
                     <small className="muted">
+                      <ControllerCharge level={c.level} />
                       {c.level === "wired"
                         ? t("controller_wired")
                         : `${t("controllerWireless")} · ${t(`controller_${c.level}` as MessageKey)}`}
