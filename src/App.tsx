@@ -63,6 +63,7 @@ import {
   CaretRightIcon,
   GaugeIcon,
   GearSixIcon,
+  GhostIcon,
   HardDrivesIcon,
   HouseIcon,
   InfoIcon,
@@ -180,7 +181,7 @@ const Tile = memo(function Tile({
       data-installed={g.installed}
       data-downloading={percent != null || undefined}
       aria-current={current}
-      aria-label={`${g.title} · ${g.source} · ${t(g.installed ? "installed" : "availableToInstall")}`}
+      aria-label={`${g.title} · ${g.source === "custom" ? t("customApp") : launcherName(g.source)} · ${t(g.installed ? "installed" : "availableToInstall")}`}
       onFocus={() => onFocus(i)}
       onMouseEnter={() => onHover(i)}
       onClick={() => onOpen(g, i)}
@@ -250,6 +251,7 @@ function HintBar({
 }
 /** Home shows the latest games in a carousel; the Library tab has the rest. */
 const homeTiles = 15;
+const HOME_FILTERS = ["all", "games", "apps"] as const;
 export default function App() {
   const [page, setPage] = useState<(typeof PAGES)[number] | "settings">("home");
   const [tabChoice, setTab] = useState<(typeof TABS)[number]>("all");
@@ -463,18 +465,27 @@ export default function App() {
   const tab = availableTabs.includes(tabChoice) ? tabChoice : "all";
   // Typing stays responsive with thousands of owned games; the grid catches up a frame later.
   const deferredQuery = useDeferredValue(query);
+  // Home separates games from the player's own apps (emulators) once there are any.
+  const [homeFilter, setHomeFilter] =
+    useState<(typeof HOME_FILTERS)[number]>("all");
+  const hasApps = (tabCounts.custom ?? 0) > 0;
+  const homeTab = !hasApps
+    ? "all"
+    : homeFilter === "apps"
+      ? "custom"
+      : homeFilter;
   const visible = useMemo(
     () =>
       filterGames(
         games,
         prefs,
-        page === "home" ? "all" : tab,
+        page === "home" ? homeTab : tab,
         page === "home" ? "" : deferredQuery,
         page === "home",
         Date.now(),
         categories.catalog,
       ),
-    [games, prefs, page, tab, deferredQuery, categories.catalog],
+    [games, prefs, page, tab, deferredQuery, categories.catalog, homeTab],
   );
   const categoryChoices = useMemo(
     () =>
@@ -549,7 +560,7 @@ export default function App() {
     const active = document.activeElement;
     if (active === document.body || active?.classList.contains("tile"))
       requestAnimationFrame(() => tileAt(0)?.focus());
-  }, [tab, query, page, prefs.filters, prefs.sort, prefs.pageSize]);
+  }, [tab, query, page, prefs.filters, prefs.sort, prefs.pageSize, homeTab]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: leaving the library closes its filters.
   useEffect(() => setFiltersOpen(false), [page]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new tab shows new controls; focus the first one.
@@ -895,7 +906,14 @@ export default function App() {
     }
     if (a === "lb" || a === "rb") {
       if (navigateSpatial(a, document.querySelector("main"))) return;
-      if (page === "home") {
+      if (page === "home" && hasApps) {
+        setHomeFilter(
+          (f) =>
+            HOME_FILTERS[
+              (HOME_FILTERS.indexOf(f) + (a === "lb" ? -1 : 1) + 3) % 3
+            ],
+        );
+      } else if (page === "home") {
         setPage("library");
         setTab("all");
       } else if (page === "library") {
@@ -964,7 +982,10 @@ export default function App() {
               ...(page === "home" || page === "library"
                 ? ([
                     ["X", t("favorites")],
-                    ["LB/RB", t("sources")],
+                    [
+                      "LB/RB",
+                      t(page === "home" && hasApps ? "show" : "sources"),
+                    ],
                     ...(page === "library" && gridPages > 1
                       ? [["LT/RT", t("pages")]]
                       : []),
@@ -1364,11 +1385,16 @@ export default function App() {
                   <section className="collection" id="content" tabIndex={-1}>
                     <div className="collection-heading">
                       <CollectionHeading>
+                        {/* The title names what the row holds: apps are not games. */}
                         {page === "home"
                           ? t(
-                              visible.some((g) => prefs.recent[g.id])
-                                ? "recentGames"
-                                : "library",
+                              homeTab === "custom"
+                                ? "customGames"
+                                : !visible.some((g) => prefs.recent[g.id])
+                                  ? "library"
+                                  : homeTab === "all" && hasApps
+                                    ? "recentItems"
+                                    : "recentGames",
                             )
                           : t("filteredCount", {
                               installed: String(
@@ -1377,6 +1403,37 @@ export default function App() {
                               total: String(visible.length),
                             })}
                       </CollectionHeading>
+                      {page === "home" && hasApps && (
+                        // biome-ignore lint/a11y/useSemanticElements: a labelled group of buttons, not form fields (<fieldset>).
+                        <div
+                          className="segmented home-filter"
+                          role="group"
+                          aria-label={t("show")}
+                        >
+                          {HOME_FILTERS.map((f) => (
+                            <button
+                              key={f}
+                              aria-pressed={homeFilter === f}
+                              onClick={() => setHomeFilter(f)}
+                            >
+                              {f === "all" ? (
+                                <SquaresFourIcon aria-hidden />
+                              ) : f === "games" ? (
+                                <GhostIcon aria-hidden />
+                              ) : (
+                                <AppWindowIcon aria-hidden />
+                              )}
+                              {t(
+                                f === "all"
+                                  ? "showAll"
+                                  : f === "games"
+                                    ? "showGames"
+                                    : "customGames",
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       {page === "library" && (
                         <div className="collection-actions">
                           {/* Sorting sits right above the list it orders; UP from the list brings focus here. */}

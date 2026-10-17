@@ -263,7 +263,7 @@ export function GameDetails({
       <div className="game-view-copy">
         <p className="detail-meta game-view-meta">
           {game.source === "custom"
-            ? t("customGames")
+            ? t("customApp")
             : game.source.toUpperCase()}{" "}
           · {t(game.installed ? "installed" : "availableToInstall")}
         </p>

@@ -425,7 +425,11 @@ export function filterGames(
         hidden.has(g.id) ||
         !(
           tab === "all" ||
-          (tab === "favorites" ? favorites.has(g.id) : g.source === tab)
+          (tab === "favorites"
+            ? favorites.has(g.id)
+            : tab === "games"
+              ? g.source !== "custom"
+              : g.source === tab)
         ) ||
         (q !== "" && !fold(g.title).includes(q))
       )

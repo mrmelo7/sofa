@@ -159,7 +159,7 @@ export function Search({
                       <strong>{game.title}</strong>
                       <span>
                         {game.source === "custom"
-                          ? t("customGames")
+                          ? t("customApp")
                           : game.source === "xbox"
                             ? "Xbox"
                             : game.source.toUpperCase()}{" "}

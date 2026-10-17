@@ -63,6 +63,14 @@ const demoGames: Game[] = [
   installed: index < 11,
 }));
 demoGames.push({
+  id: `custom:${Date.UTC(2026, 9, 1)}`,
+  title: "RetroArch",
+  source: "custom",
+  launch: "",
+  cover: null,
+  installed: true,
+});
+demoGames.push({
   id: "epic:demo-control",
   title: "Control",
   source: "epic",

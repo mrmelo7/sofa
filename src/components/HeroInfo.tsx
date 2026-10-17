@@ -61,7 +61,7 @@ function Info({
         {game.source === "xbox"
           ? "Xbox"
           : game.source === "custom"
-            ? t("customGames")
+            ? t("customApp")
             : game.source.toUpperCase()}{" "}
         · {t("installed")}
       </span>

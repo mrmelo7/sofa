@@ -1973,6 +1973,15 @@ button.tile:is(:focus-visible, .gamepad-input *:focus) {
   max-width: 65ch;
   margin-top: 12px;
 }
+/* Home's All · Games · Apps, beside the row it filters; small, the row stays the focus. */
+.collection-heading .home-filter {
+  padding: 3px;
+}
+.collection-heading .home-filter button {
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: 14px;
+}
 .segmented {
   display: inline-flex;
   align-items: center;
