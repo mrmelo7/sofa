@@ -689,7 +689,7 @@ export function ControllerSettings({
         {controllers.length === 0 ? (
           <p className="muted">{t("controllersNone")}</p>
         ) : (
-          <ul className="item-list">
+          <ul className="item-list controller-list">
             {controllers.map((c) => (
               <ItemRow
                 key={c.index}
@@ -725,7 +725,7 @@ export function ControllerSettings({
         {!paired.data?.length ? (
           <p className="muted">{t("bluetoothNonePaired")}</p>
         ) : (
-          <ul className="item-list">
+          <ul className="item-list controller-list">
             {paired.data.map((device) => (
               <ItemRow
                 key={device.id}
