@@ -455,7 +455,7 @@ export function filterGames(
     .sort((a, b) => {
       const byTitle = a.title.localeCompare(b.title);
       if (home || p.sort === "recent")
-        return lastPlayed(b, p) - lastPlayed(a, p) || byTitle;
+        return recency(b, p) - recency(a, p) || byTitle;
       switch (p.sort) {
         case "mostPlayed":
           return (b.playtime ?? 0) - (a.playtime ?? 0) || byTitle;
@@ -472,6 +472,16 @@ export function filterGames(
 /** Milliseconds of the latest session: a launch from Sofa or one the launcher recorded. */
 const lastPlayed = (g: Game, p: Preferences) =>
   Math.max(p.recent[g.id] ?? 0, (g.last_played ?? 0) * 1000);
+/**
+ * Order for "recent": a program the player just added (an emulator) counts as fresh from the
+ * moment it was added (its id is `custom:<ms>`), so it lands at the front of Home instead of
+ * past the row's end. Only the order uses it; the game page still shows real sessions.
+ */
+const recency = (g: Game, p: Preferences) =>
+  Math.max(
+    lastPlayed(g, p),
+    g.source === "custom" ? Number(g.id.slice("custom:".length)) || 0 : 0,
+  );
 export function hero(g: Game | undefined): string | undefined {
   if (!g) return;
   return g.source === "steam"

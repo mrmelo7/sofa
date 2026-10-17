@@ -361,6 +361,35 @@ test("the game page lists only the facts it knows, in the player's language", ()
   );
 });
 
+test("a program just added comes first on Home until something is played after it", () => {
+  const program: Game = {
+    id: `custom:${Date.UTC(2026, 9, 17)}`,
+    title: "RetroArch",
+    source: "custom",
+    launch: "",
+    cover: null,
+    installed: true,
+  };
+  const played: Game = {
+    ...games[0],
+    installed: true,
+    last_played: Date.UTC(2026, 9, 10) / 1000,
+  };
+  const home = (recent = {}) =>
+    filterGames(
+      [played, program],
+      { ...defaults, recent },
+      "all",
+      "",
+      true,
+    ).map((g) => g.title);
+  assert.deepEqual(home(), ["RetroArch", played.title]);
+  assert.deepEqual(home({ [played.id]: Date.UTC(2026, 9, 18) }), [
+    played.title,
+    "RetroArch",
+  ]);
+});
+
 test("the store puts deals closest to the player's taste first, the rest keeps its order", () => {
   const now = Date.UTC(2026, 9, 14);
   const game = (id: string, extra: Partial<Game> = {}): Game => ({
