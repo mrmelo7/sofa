@@ -1394,20 +1394,23 @@ export default function App() {
                     {/* Page size on the left, the pages on the right; LT/RT turn them too. */}
                     {page === "library" && visible.length > pageSizes[0] && (
                       <div className="library-pager">
-                        <Picker
-                          label={t("perPage")}
-                          value={String(prefs.pageSize)}
-                          options={pageSizes.map((size) => ({
-                            value: String(size),
-                            label: t("perPageOption", { count: String(size) }),
-                          }))}
-                          onChange={(size) =>
-                            setPrefs((p) => ({
-                              ...p,
-                              pageSize: Number(size) as typeof p.pageSize,
-                            }))
-                          }
-                        />
+                        <div className="page-size">
+                          <span aria-hidden>{t("perPage")}</span>
+                          <Picker
+                            label={t("perPage")}
+                            value={String(prefs.pageSize)}
+                            options={pageSizes.map((size) => ({
+                              value: String(size),
+                              label: String(size),
+                            }))}
+                            onChange={(size) =>
+                              setPrefs((p) => ({
+                                ...p,
+                                pageSize: Number(size) as typeof p.pageSize,
+                              }))
+                            }
+                          />
+                        </div>
                         {gridPages > 1 && (
                           <nav
                             className="store-pager"

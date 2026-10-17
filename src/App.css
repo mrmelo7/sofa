@@ -1548,6 +1548,13 @@ dialog:has(.controller-keyboard) {
   gap: 16px;
   padding-top: 10px;
 }
+.page-size {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 14px;
+}
 .library-pager .store-pager {
   padding: 0;
   gap: 10px;
