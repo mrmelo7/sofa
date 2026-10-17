@@ -88,7 +88,7 @@ pub(crate) fn foreground() -> Option<(String, windows_sys::Win32::Foundation::HW
 /// bring Sofa back until the game itself takes the foreground, so closing the game returns to
 /// Sofa. Gives up after 90 s or as soon as anything else (the game, the user) is in front.
 #[cfg(windows)]
-fn keep_sofa_in_front(app: tauri::AppHandle) {
+pub(crate) fn keep_sofa_in_front(app: tauri::AppHandle) {
     use windows_sys::Win32::UI::WindowsAndMessaging::{SW_MINIMIZE, ShowWindow};
     std::thread::spawn(move || {
         let started = std::time::Instant::now();
@@ -246,6 +246,15 @@ pub fn run() {
                 });
             }
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            #[cfg(windows)]
+            if window.label() == "main" && matches!(event, tauri::WindowEvent::Focused(true)) {
+                let app = window.app_handle().clone();
+                std::thread::spawn(move || library::close_big_picture(&app));
+            }
+            #[cfg(not(windows))]
+            let _ = (window, event);
         })
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())

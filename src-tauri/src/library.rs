@@ -193,6 +193,43 @@ pub fn running_steam_app() -> Option<u32> {
     None
 }
 
+/// Big Picture keeps reading the controller while it sits behind Sofa, so every press moved
+/// both. When Sofa comes to the front with Big Picture open, close it; Steam stays in the tray.
+#[cfg(windows)]
+pub(crate) fn close_big_picture(app: &tauri::AppHandle) {
+    if !big_picture_open() {
+        return;
+    }
+    crate::log::info(app, "steam: closing Big Picture behind Sofa");
+    if tauri_plugin_opener::open_url("steam://close/bigpicture", None::<&str>).is_ok() {
+        // Leaving Big Picture can raise Steam's desktop window; push it back down.
+        crate::keep_sofa_in_front(app.clone());
+    }
+}
+
+/// Big Picture is a CEF window of class `SDL_app` whose title names it in every language;
+/// Steam's desktop window shares the class but not the title. Minimized still counts.
+#[cfg(windows)]
+fn big_picture_open() -> bool {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{FindWindowExW, GetWindowTextW, IsWindowVisible};
+    let class: Vec<u16> = "SDL_app\0".encode_utf16().collect();
+    let mut window = std::ptr::null_mut();
+    loop {
+        // Top-level windows of that class after `window`; null class name terminator above.
+        window = unsafe { FindWindowExW(std::ptr::null_mut(), window, class.as_ptr(), std::ptr::null()) };
+        if window.is_null() {
+            return false;
+        }
+        let mut title = [0u16; 256];
+        // Writes at most `title.len()` units, null-terminated, and returns the length.
+        let length = unsafe { GetWindowTextW(window, title.as_mut_ptr(), title.len() as i32) } as usize;
+        // `window` was just returned by Windows.
+        if String::from_utf16_lossy(&title[..length]).contains("Big Picture") && unsafe { IsWindowVisible(window) } != 0 {
+            return true;
+        }
+    }
+}
+
 // Redistributables / runtimes that show up as "installed apps" but aren't games.
 const STEAM_SKIP: &[&str] = &["228980", "1070560", "1391110", "1628350", "1493710"];
 
