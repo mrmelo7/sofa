@@ -1,6 +1,6 @@
 # Backend (Rust + Tauri 2)
 
-`src/lib.rs` registers plugins, managed state and every command. One module per area: `library` (game scan, Steam helpers), `accounts` (Steam login and owned games), `hud` (HUD window, controller chord), `hud_server` (local HTTP for the Game Bar widget; every HUD command must be allowlisted in `dispatch`), `session` (running game and play time), `game_settings` (per-game profile applied in `launch`), `display`, `ally` (ASUS WMI profiles and TDP), `power`, `xbox_mode`, `categories`, `store`, `uninstall`/`epic_uninstall`, `network`, `log` (`sofa.log`; log steps and statuses, never secrets).
+`src/lib.rs` registers plugins, managed state and every command. One module per area: `library` (game scan, Steam helpers), `accounts` (Steam login and owned games), `hud` (HUD window, Xbox button), `hud_server` (local HTTP for the Game Bar widget; every HUD command must be allowlisted in `dispatch`), `session` (running game and play time), `game_settings` (per-game profile applied in `launch`), `display`, `ally` (ASUS WMI profiles and TDP), `power`, `xbox_mode`, `categories`, `store`, `uninstall`/`epic_uninstall`, `network`, `log` (`sofa.log`; log steps and statuses, never secrets).
 
 ## Commands
 

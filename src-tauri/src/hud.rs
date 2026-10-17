@@ -62,11 +62,15 @@ pub async fn open_hud(app: tauri::AppHandle) -> Result<(), String> {
         .await.map_err(|_| "openFailed")?
 }
 
-/// View + Menu opens Game Bar from Sofa or a game, just like Sofa's HUD buttons.
+/// The Xbox button of any XInput controller opens Game Bar, as on an Xbox controller.
 /// The Ally Command Center button is handled separately by `ally_input`.
 #[cfg(windows)]
 pub fn watch_controller(app: tauri::AppHandle) {
     use windows_sys::Win32::UI::Input::XboxController::*;
+    let Some(get_state) = state_with_guide() else {
+        crate::log::info(&app, "hud: XInputGetStateEx unavailable; Xbox button not watched");
+        return;
+    };
     std::thread::spawn(move || {
         let mut connected = [true; 4];
         let mut was_held = false;
@@ -82,15 +86,77 @@ pub fn watch_controller(app: tauri::AppHandle) {
                     continue;
                 }
                 let mut state = XINPUT_STATE::default();
-                *live = unsafe { XInputGetState(index as u32, &mut state) } == 0;
-                let chord = XINPUT_GAMEPAD_BACK | XINPUT_GAMEPAD_START;
-                held |= *live && state.Gamepad.wButtons & chord == chord;
+                *live = unsafe { get_state(index as u32, &mut state) } == 0;
+                held |= *live && state.Gamepad.wButtons & GUIDE != 0;
             }
-            if held && !was_held
-                && let Err(error) = show_hud(&app) {
-                    crate::log::info(&app, format!("hud: Game Bar launch failed: {error}"));
-                }
+            if held && !was_held {
+                guide_pressed(&app);
+            }
             was_held = held;
         }
     });
+}
+
+/// The Xbox button's bit; only `XInputGetStateEx` reports it.
+#[cfg(windows)]
+const GUIDE: u16 = 0x0400;
+
+#[cfg(windows)]
+type GetState = unsafe extern "system" fn(u32, *mut windows_sys::Win32::UI::Input::XboxController::XINPUT_STATE) -> u32;
+
+/// `XInputGetStateEx`: `XInputGetState` plus the Xbox button. Undocumented, exported by
+/// ordinal 100 only (Steam and DS4Windows read the button the same way).
+#[cfg(windows)]
+fn state_with_guide() -> Option<GetState> {
+    use windows_sys::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryW};
+    let dll: Vec<u16> = "xinput1_4.dll\0".encode_utf16().collect();
+    // Null-terminated name; the module is never freed, so the returned pointer stays valid.
+    let module = unsafe { LoadLibraryW(dll.as_ptr()) };
+    if module.is_null() {
+        return None;
+    }
+    // An ordinal travels in the low word of the name pointer.
+    let f = unsafe { GetProcAddress(module, std::ptr::without_provenance(100)) }?;
+    // DWORD XInputGetStateEx(DWORD, XINPUT_STATE*), same signature as XInputGetState.
+    Some(unsafe { std::mem::transmute::<unsafe extern "system" fn() -> isize, GetState>(f) })
+}
+
+/// Windows already opens Game Bar for Xbox controllers but not for every XInput pad. Wait and
+/// see: if Game Bar didn't come or go on its own, Windows ignored the press and Sofa toggles it;
+/// a second Win+G after Windows' own would undo it.
+/// ponytail: fixed 600 ms wait; a cold Game Bar start slower than that still toggles twice.
+/// Watch for Game Bar's window instead if the log shows it.
+#[cfg(windows)]
+fn guide_pressed(app: &tauri::AppHandle) {
+    if !controller_opens_game_bar() {
+        return;
+    }
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let before = game_bar_in_front();
+        std::thread::sleep(std::time::Duration::from_millis(600));
+        let after = game_bar_in_front();
+        crate::log::info(&app, format!("hud: Xbox button, Game Bar in front {before} -> {after}"));
+        if before == after
+            && let Err(error) = show_hud(&app) {
+                crate::log::info(&app, format!("hud: Game Bar launch failed: {error}"));
+            }
+    });
+}
+
+#[cfg(windows)]
+fn game_bar_in_front() -> bool {
+    crate::foreground().is_some_and(|(exe, _)| exe.eq_ignore_ascii_case("GameBar.exe"))
+}
+
+/// Settings > Gaming > Game Bar, "Open Game Bar using this button on a controller"; on unless
+/// the player turned it off.
+#[cfg(windows)]
+fn controller_opens_game_bar() -> bool {
+    use winreg::{RegKey, enums::HKEY_CURRENT_USER};
+    RegKey::predef(HKEY_CURRENT_USER)
+        .open_subkey(r"Software\Microsoft\GameBar")
+        .and_then(|k| k.get_value::<u32, _>("UseNexusForGameBarEnabled"))
+        .ok()
+        .is_none_or(|on| on != 0)
 }

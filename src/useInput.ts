@@ -121,8 +121,6 @@ export function useInput(
     // When each held action fired last, and when its press began (for the repeat delay).
     const last = new Map<Action, number>();
     const since = new Map<Action, number>();
-    const deferred: Action[] = ["menu", "settings"];
-    let chord = false;
     // The UWP host forwards routed gamepad keys; polling the same controller
     // here would execute every action twice and depends on WebView gamepad focus.
     const onNativeGamepad = (event: Event) => {
@@ -158,16 +156,11 @@ export function useInput(
           if (x > 0.5) held.add("right");
         }
       }
-      // View + Menu together toggles the native HUD; those two fire on release
-      // so the chord doesn't also open the menu or settings here.
-      if (held.has("menu") && held.has("settings")) chord = true;
       for (const a of last.keys())
         if (!held.has(a)) {
           last.delete(a);
           since.delete(a);
-          if (deferred.includes(a) && !chord) fire(a);
         }
-      if (!held.has("menu") && !held.has("settings")) chord = false;
       for (const a of held) {
         // Directions repeat like a console: a pause after the press, then a steady pace.
         const repeats = ["up", "down", "left", "right"].includes(a);
@@ -179,7 +172,7 @@ export function useInput(
         ) {
           if (!last.has(a)) since.set(a, now);
           last.set(a, now);
-          if (!deferred.includes(a)) fire(a);
+          fire(a);
         }
       }
       raf = requestAnimationFrame(poll);

@@ -175,8 +175,7 @@ const en = {
   onboardingContinue: "Continue",
   settingsLibraryDescription: "Accounts, owned games and organization",
   settingsAppearanceDescription: "Language, cover size and Xbox mode",
-  settingsPerformanceDescription:
-    "In the Game Bar (Xbox button), with View + Menu, or tap here",
+  settingsPerformanceDescription: "In the Game Bar (Xbox button) or tap here",
   settingsUpdatesDescription: "Check for a new Sofa version",
   controllers: "Controllers",
   apps: "Apps",
@@ -584,8 +583,7 @@ const dicts = {
     onboardingContinue: "Continuar",
     settingsLibraryDescription: "Contas, jogos da biblioteca e organização",
     settingsAppearanceDescription: "Idioma, tamanho das capas e modo Xbox",
-    settingsPerformanceDescription:
-      "Na Game Bar (botão Xbox), com View + Menu ou tocando aqui",
+    settingsPerformanceDescription: "Na Game Bar (botão Xbox) ou tocando aqui",
     settingsUpdatesDescription: "Verificar novas versões do Sofa",
     controllers: "Controles",
     apps: "Aplicativos",
@@ -993,8 +991,7 @@ const dicts = {
     onboardingContinue: "Continuar",
     settingsLibraryDescription: "Cuentas, juegos y organización",
     settingsAppearanceDescription: "Idioma, tamaño de portadas y modo Xbox",
-    settingsPerformanceDescription:
-      "En la Game Bar (botón Xbox), con View + Menu o toca aquí",
+    settingsPerformanceDescription: "En la Game Bar (botón Xbox) o toca aquí",
     settingsUpdatesDescription: "Buscar nuevas versiones de Sofa",
     controllers: "Mandos",
     apps: "Aplicaciones",

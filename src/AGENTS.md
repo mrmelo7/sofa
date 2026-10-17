@@ -19,7 +19,6 @@
 - Never use a native `<select>`: the controller can't open its list (a gamepad click isn't a user activation). Choices use `components/Picker.tsx` (A opens, up/down move, A picks, B closes); while its list is open `App.tsx` routes every action to it through `pickerInput`.
 - Set focus on purpose: `data-initial-focus` in dialogs, move focus to the trigger before unmounting a focused element.
 - Text fields use `keyboardOnActivate`: A opens Sofa's controller keyboard (D-pad + A, X deletes, Y inserts a space, B returns to the field); touch may use the system keyboard. `keyboardInput` takes priority in `useInput` in every window.
-- View + Start is reserved for the native HUD toggle; `useInput` fires View/Start on release so the chord doesn't trigger them.
 
 ## Reviewing UI changes
 

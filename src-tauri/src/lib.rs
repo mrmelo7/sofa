@@ -51,7 +51,7 @@ fn is_launcher(exe: &str) -> bool {
 
 /// File name of the process that owns the foreground window, and that window.
 #[cfg(windows)]
-fn foreground() -> Option<(String, windows_sys::Win32::Foundation::HWND)> {
+pub(crate) fn foreground() -> Option<(String, windows_sys::Win32::Foundation::HWND)> {
     use windows_sys::Win32::Foundation::CloseHandle;
     use windows_sys::Win32::System::Threading::{OpenProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW};
     use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};

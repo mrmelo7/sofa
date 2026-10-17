@@ -27,7 +27,7 @@ Built with Tauri 2 (Rust) and React.
 | LT / RT | Previous / next page in the Store |
 | Start | Settings |
 | View | Main menu |
-| View + Start (hold) | Open the HUD |
+| Xbox | Open the HUD (Game Bar) |
 
 The keyboard works too: arrows, Enter and Escape.
 
