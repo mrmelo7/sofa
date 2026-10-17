@@ -113,7 +113,7 @@ pub async fn apply(app: &tauri::AppHandle, id: &str) -> bool {
             crate::log::info(app, format!("launch: tdp failed: {e}"));
         }
     if let Some(mode) = s.mode.filter(|_| baseline.mode.is_some())
-        && let Err(e) = crate::display::set_display_mode(mode).await {
+        && let Err(e) = crate::display::set_display_mode(mode, app.clone()).await {
             crate::log::info(app, format!("launch: display mode failed: {e}"));
         }
     if let Some(percent) = s.brightness.filter(|_| baseline.brightness.is_some())
@@ -130,7 +130,7 @@ pub async fn restore(app: &tauri::AppHandle) {
     let mut ok = true;
     if let Some(profile) = s.profile { ok &= crate::ally::set_ally_profile(profile).await.is_ok(); }
     if let Some(tdp) = s.tdp { ok &= crate::ally::set_tdp(tdp).await.is_ok(); }
-    if let Some(mode) = s.mode { ok &= crate::display::set_display_mode(mode).await.is_ok(); }
+    if let Some(mode) = s.mode { ok &= crate::display::set_display_mode(mode, app.clone()).await.is_ok(); }
     if let Some(brightness) = s.brightness { ok &= crate::display::set_brightness(brightness).await.is_ok(); }
     if ok {
         if let Some(path) = session_file(app) { let _ = std::fs::remove_file(path); }

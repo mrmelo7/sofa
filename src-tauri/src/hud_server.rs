@@ -95,7 +95,7 @@ async fn dispatch(app: &tauri::AppHandle, command: &str, args: serde_json::Value
         "set_ally_profile" => out(ally::set_ally_profile(parse(arg("profile"))?).await?),
         "set_tdp" => out(ally::set_tdp(parse(arg("watts"))?).await?),
         "display_status" => out(display::display_status().await),
-        "set_display_mode" => out(display::set_display_mode(parse(arg("mode"))?).await?),
+        "set_display_mode" => out(display::set_display_mode(parse(arg("mode"))?, app.clone()).await?),
         "set_brightness" => out(display::set_brightness(parse(arg("percent"))?).await?),
         "volume_status" => out(audio::volume_status().await),
         "set_volume" => out(audio::set_volume(parse(arg("percent"))?).await?),

@@ -96,8 +96,13 @@ pub async fn display_status() -> DisplayStatus {
 }
 
 #[tauri::command]
-pub async fn set_display_mode(mode: Mode) -> Result<(), String> {
-    blocking(move || set_mode(mode)).await
+pub async fn set_display_mode(mode: Mode, app: tauri::AppHandle) -> Result<(), String> {
+    blocking(move || set_mode(mode)).await?;
+    // The window may still have the old resolution's size.
+    if let Some(main) = tauri::Manager::get_webview_window(&app, "main") {
+        crate::fit_to_monitor(main.as_ref().window());
+    }
+    Ok(())
 }
 
 #[tauri::command]

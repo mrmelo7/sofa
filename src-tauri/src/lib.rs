@@ -182,6 +182,37 @@ pub(crate) fn keep_sofa_in_front(app: tauri::AppHandle) {
 #[cfg(not(windows))]
 fn keep_sofa_in_front(_app: tauri::AppHandle) {}
 
+/// Unplugging the TV (or changing the resolution) moves a fullscreen window to another monitor
+/// but leaves it at the old monitor's size. Leaving and re-entering fullscreen sizes it to the
+/// monitor it is on now. At most once every 2 s, so the resizes this causes can't loop.
+pub(crate) fn fit_to_monitor(window: tauri::Window) {
+    use std::sync::Mutex;
+    use std::time::{Duration, Instant};
+    static LAST: Mutex<Option<Instant>> = Mutex::new(None);
+    let (Ok(true), Ok(Some(monitor)), Ok(size)) =
+        (window.is_fullscreen(), window.current_monitor(), window.outer_size())
+    else {
+        return;
+    };
+    if size == *monitor.size() {
+        return;
+    }
+    let mut last = LAST.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    if last.is_some_and(|at| at.elapsed() < Duration::from_secs(2)) {
+        return;
+    }
+    *last = Some(Instant::now());
+    log::info(
+        window.app_handle(),
+        format!("display: refit {}x{} to {}x{}", size.width, size.height, monitor.size().width, monitor.size().height),
+    );
+    // Off the event handler: window calls from inside it can deadlock on Windows.
+    tauri::async_runtime::spawn(async move {
+        let _ = window.set_fullscreen(false);
+        let _ = window.set_fullscreen(true);
+    });
+}
+
 /// `System32\<name>` resolved through Windows, so nothing planted on PATH runs instead.
 #[cfg(windows)]
 pub(crate) fn system_exe(name: &str) -> Option<std::path::PathBuf> {
@@ -324,8 +355,16 @@ pub fn run() {
                 let app = window.app_handle().clone();
                 std::thread::spawn(move || library::close_big_picture(&app));
             }
-            #[cfg(not(windows))]
-            let _ = (window, event);
+            if window.label() == "main"
+                && matches!(
+                    event,
+                    tauri::WindowEvent::Moved(_)
+                        | tauri::WindowEvent::Resized(_)
+                        | tauri::WindowEvent::ScaleFactorChanged { .. }
+                )
+            {
+                fit_to_monitor(window.clone());
+            }
         })
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
