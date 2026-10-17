@@ -572,7 +572,6 @@ function HudPanel({
           icon={ArrowsOutIcon}
           label={t("hudResolution")}
           value={current ? `${current.width}×${current.height}` : "—"}
-          note={t("hudTapToChange")}
           expanded={open === "resolution"}
           disabled={busy || resolutions.length < 2}
           onClick={() => toggle("resolution")}
@@ -581,7 +580,6 @@ function HudPanel({
           icon={ArrowsClockwiseIcon}
           label={t("hudRefreshRate")}
           value={current ? `${current.refresh} Hz` : "—"}
-          note={t("hudTapToChange")}
           expanded={open === "refresh"}
           disabled={busy || rates.length < 2}
           onClick={() => toggle("refresh")}
@@ -593,7 +591,6 @@ function HudPanel({
           icon={SunIcon}
           label={t("hudBrightness")}
           value={display?.brightness != null ? `${display.brightness}%` : "—"}
-          note={t("hudTapToChange")}
           expanded={open === "brightness"}
           disabled={busy || display?.brightness == null}
           onClick={() => toggle("brightness")}
@@ -618,7 +615,6 @@ function HudPanel({
             icon={SpeakerHighIcon}
             label={t("hudVolume")}
             value={volume.muted ? t("hudMuted") : `${volume.percent}%`}
-            note={t("hudTapToChange")}
             expanded={open === "volume"}
             disabled={busy}
             onClick={() => toggle("volume")}
@@ -650,7 +646,6 @@ function HudPanel({
             icon={GaugeIcon}
             label={t("hudFramerateLimit")}
             value={framerate.limit ? `${framerate.limit} FPS` : t("off")}
-            note={t("hudTapToChange")}
             expanded={open === "fps"}
             disabled={busy}
             onClick={() => toggle("fps")}

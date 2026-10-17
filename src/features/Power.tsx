@@ -92,7 +92,6 @@ export function ControllerBatteries({
           ))}
         </div>
       )}
-      <p className="inline-note">{t("controllerLevelNote")}</p>
     </section>
   );
 }

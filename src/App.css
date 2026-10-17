@@ -2468,8 +2468,8 @@ button.tile:is(:focus-visible, .gamepad-input *:focus) {
   align-items: flex-start;
   justify-content: flex-start;
   gap: 4px;
-  min-height: 104px;
-  padding: 14px 16px;
+  min-height: 84px;
+  padding: 12px 14px;
   border: 1px solid rgb(255 255 255 / 0.1);
   border-radius: 16px;
   background: rgb(255 255 255 / 0.06);
@@ -2511,14 +2511,14 @@ button.tile:is(:focus-visible, .gamepad-input *:focus) {
   transform: rotate(180deg);
 }
 .hud-tile strong {
-  font-size: 30px;
+  font-size: 24px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
 .hud-tile small {
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
 }
 .hud-tile[aria-pressed="true"],
 .ally-profile-options button[aria-pressed="true"],
@@ -2554,6 +2554,29 @@ button.tile:is(:focus-visible, .gamepad-input *:focus) {
 }
 .floating-hud .battery-section > h2 {
   margin: 6px 0 8px;
+  font-size: 12px;
+}
+/* The HUD is a narrow panel (often scaled up on a TV): compact controller cards. */
+.floating-hud .controller-batteries {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.floating-hud .controller-batteries article {
+  min-width: 0;
+  gap: 10px;
+  padding: 10px 14px;
+}
+.floating-hud .controller-batteries h3 {
+  font-size: 15px;
+}
+.floating-hud .controller-batteries svg {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.floating-hud .controller-batteries p {
+  font-size: 13px;
 }
 .settings-hub {
   flex: 1;
