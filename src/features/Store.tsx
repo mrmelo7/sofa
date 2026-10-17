@@ -580,9 +580,6 @@ export function Store({
             placeholder={t("searchGames")}
             aria-label={t("searchGames")}
           />
-          <button type="submit" aria-label={t("search")} title={t("search")}>
-            <MagnifyingGlassIcon />
-          </button>
           <button
             type="button"
             onClick={() => !loading && refresh()}
@@ -855,7 +852,14 @@ export function Store({
           <div className="compare-summary">
             {demo && <p className="muted">{t("demoPrices")}</p>}
             <div className="compare-actions">
-              <button data-wishlist-toggle onClick={() => toggle(selected)}>
+              {/* A toggle like "Like": the filled heart says it's on the list. */}
+              <button
+                data-wishlist-toggle
+                aria-pressed={wishlist.some(
+                  (g) => g.gameID === selected.gameID,
+                )}
+                onClick={() => toggle(selected)}
+              >
                 <HeartIcon
                   weight={
                     wishlist.some((g) => g.gameID === selected.gameID)
@@ -863,11 +867,7 @@ export function Store({
                       : "regular"
                   }
                 />
-                {t(
-                  wishlist.some((g) => g.gameID === selected.gameID)
-                    ? "removeWishlist"
-                    : "addWishlist",
-                )}
+                {t("wishlist")}
               </button>
               {selected.steamAppID && (
                 <>

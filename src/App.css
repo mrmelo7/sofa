@@ -2218,6 +2218,13 @@ button.tile:is(:focus-visible, .gamepad-input *:focus) {
   gap: 8px;
   white-space: nowrap;
 }
+/* Three quiet toggles on one line; the offers below carry the main action. Specific enough
+   to beat the 48 px minimum every button in main gets. */
+.compare-summary .compare-actions button[aria-pressed] {
+  min-height: 44px;
+  padding: 8px 16px;
+  font-size: 15px;
+}
 .offer-list {
   display: flex;
   flex-direction: column;
