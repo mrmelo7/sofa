@@ -1,6 +1,6 @@
-# Sofa — agent guide
+# Sofa Game Launcher — agent guide
 
-Controller-first game launcher for Windows handhelds (ROG Ally) that also registers as the Xbox full screen experience home app. Tauri 2 (Rust) backend, React 19 + TypeScript frontend.
+Sofa Game Launcher (Sofa for short) is a controller-first game launcher for Windows handhelds (ROG Ally) that also registers as the Xbox full screen experience home app. Tauri 2 (Rust) backend, React 19 + TypeScript frontend.
 
 Sofa is "SteamOS on Windows": in the full screen experience the user holds a controller and no mouse or keyboard, so everything a console user does must be possible with the gamepad alone. Touch and keyboard are secondary. A change that only works by touch is a bug, even if it looks right.
 

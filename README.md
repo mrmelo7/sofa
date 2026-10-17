@@ -1,6 +1,6 @@
-# Sofa
+# Sofa Game Launcher
 
-A game launcher for Windows handhelds (like the ROG Ally) that you use with a controller. Think SteamOS, on Windows.
+Sofa is a game launcher for Windows handhelds (like the ROG Ally) that you use with a controller. Think SteamOS, on Windows.
 
 Built with Tauri 2 (Rust) and React.
 

@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Sofa",
+        "title": "Sofa Game Launcher",
         "width": 1280,
         "height": 800,
         "minWidth": 800,

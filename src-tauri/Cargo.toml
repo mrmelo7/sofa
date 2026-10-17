@@ -1,7 +1,7 @@
 [package]
 name = "sofa"
 version = "0.3.36"
-description = "Controller-first game library"
+description = "Sofa Game Launcher: a controller-first game launcher for Windows handhelds"
 authors = ["you"]
 edition = "2024"
 
