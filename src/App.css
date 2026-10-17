@@ -1540,6 +1540,24 @@ dialog:has(.controller-keyboard) {
   right: 12px;
   bottom: 14px;
 }
+/* Below the Library grid: page size on the left, the pages on the right. */
+.library-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 10px;
+}
+.library-pager .store-pager {
+  padding: 0;
+  gap: 10px;
+  font-size: 14px;
+}
+.collection .library-pager :is(.store-pager button, .picker button) {
+  min-height: 36px;
+  padding: 6px 12px;
+  font-size: 14px;
+}
 .store-pager {
   display: flex;
   align-items: center;

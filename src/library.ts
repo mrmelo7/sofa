@@ -257,6 +257,8 @@ export type Preferences = {
   recent: Record<string, number>;
   sort: "recent" | "mostPlayed" | "installed" | "title" | "size";
   density: "comfortable" | "compact";
+  /** Games per Library page. */
+  pageSize: (typeof pageSizes)[number];
   /** Unset means "follow the language" (see App). */
   region?: Region;
   filters: LibraryFilters;
@@ -271,6 +273,7 @@ export type Preferences = {
   /** Muted game previews behind Home and the full-screen game page. */
   animatedBackgrounds: boolean;
 };
+export const pageSizes = [15, 30, 60] as const;
 const sorts: Preferences["sort"][] = [
   "recent",
   "mostPlayed",
@@ -290,6 +293,7 @@ export const defaults: Preferences = {
   recent: {},
   sort: "recent",
   density: "comfortable",
+  pageSize: 15,
   filters: defaultFilters,
   categories: {},
   liked: [],
@@ -358,6 +362,7 @@ export function parsePreferences(
     ),
     sort: sorts.find((sort) => sort === p.sort) ?? "recent",
     density: p.density === "compact" ? "compact" : "comfortable",
+    pageSize: pageSizes.find((size) => size === p.pageSize) ?? 15,
     ...(regions.includes(p.region as Region)
       ? { region: p.region as Region }
       : {}),

@@ -39,6 +39,7 @@ import {
   filterGames,
   type Game,
   hero,
+  pageSizes,
   parsePreferences,
   tasteWeights,
   titleGroup,
@@ -57,6 +58,8 @@ import {
   ArrowRightIcon,
   ArrowSquareOutIcon,
   BluetoothIcon,
+  CaretLeftIcon,
+  CaretRightIcon,
   GaugeIcon,
   GearSixIcon,
   HardDrivesIcon,
@@ -500,7 +503,25 @@ export default function App() {
           : [...p.filters.categories, key],
       },
     }));
-  const selected = visible[Math.min(focus, Math.max(0, visible.length - 1))];
+  // The grid shows a page of the library; Home's row only its first games.
+  const [gridPage, setGridPage] = useState(0);
+  const gridPages = Math.max(1, Math.ceil(visible.length / prefs.pageSize));
+  const shownPage = Math.min(gridPage, gridPages - 1);
+  const shown =
+    page === "home"
+      ? visible.slice(0, homeTiles)
+      : visible.slice(
+          shownPage * prefs.pageSize,
+          (shownPage + 1) * prefs.pageSize,
+        );
+  const goToGridPage = (next: number, landOnFirst = false) => {
+    if (next < 0 || next >= gridPages) return;
+    setGridPage(next);
+    setFocus(0);
+    grid.current?.scrollTo({ top: 0 });
+    if (landOnFirst) requestAnimationFrame(() => tileAt(0)?.focus());
+  };
+  const selected = shown[Math.min(focus, Math.max(0, shown.length - 1))];
   const preview = details ?? (page === "home" ? selected : undefined);
   useEffect(() => {
     if (!details) return;
@@ -510,11 +531,12 @@ export default function App() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new tab, search, page or filter starts at the first tile.
   useEffect(() => {
     setFocus(0);
+    setGridPage(0);
     // The controller follows: focus on a tile (or lost with the old tiles) moves to the first.
     const active = document.activeElement;
     if (active === document.body || active?.classList.contains("tile"))
       requestAnimationFrame(() => tileAt(0)?.focus());
-  }, [tab, query, page, prefs.filters, prefs.sort]);
+  }, [tab, query, page, prefs.filters, prefs.sort, prefs.pageSize]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: leaving the library closes its filters.
   useEffect(() => setFiltersOpen(false), [page]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new tab shows new controls; focus the first one.
@@ -527,8 +549,8 @@ export default function App() {
         ?.focus();
   }, [filtersOpen, filterTab]);
   useEffect(
-    () => setFocus((f) => Math.min(f, Math.max(0, visible.length - 1))),
-    [visible.length],
+    () => setFocus((f) => Math.min(f, Math.max(0, shown.length - 1))),
+    [shown.length],
   );
   // Letter headings sit between tiles when sorting by title; index tiles, not children.
   const tileAt = useCallback(
@@ -540,9 +562,9 @@ export default function App() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: closing a dialog is a moment focus can drop.
   useEffect(() => {
     if (document.activeElement !== document.body) return;
-    const tile = tileAt(Math.min(focus, visible.length - 1));
+    const tile = tileAt(Math.min(focus, shown.length - 1));
     tile?.focus();
-  }, [visible.length, focus, tileAt, details, settings]);
+  }, [shown.length, focus, tileAt, details, settings]);
   const focusTile = useCallback((i: number) => setFocus(i), []);
   const finishTouchScroll = useCallback((row: HTMLDivElement) => {
     if (touchScrollStart.current === null) return;
@@ -833,6 +855,9 @@ export default function App() {
       featureInput.current?.(a);
       return;
     }
+    // LT/RT turn the Library's pages, landing on the first game.
+    if ((a === "lt" || a === "rt") && page === "library")
+      goToGridPage(shownPage + (a === "lt" ? -1 : 1), true);
     if (a === "x" && selected) toggleFavorite(selected);
     if (a === "y") install();
   };
@@ -872,6 +897,9 @@ export default function App() {
                 ? ([
                     ["X", t("favorites")],
                     ["LB/RB", t("sources")],
+                    ...(page === "library" && gridPages > 1
+                      ? [["LT/RT", t("pages")]]
+                      : []),
                   ] as [string, string][])
                 : page === "store"
                   ? ([
@@ -910,8 +938,8 @@ export default function App() {
                 ? hero(selected)
                 : undefined
           }
-          previous={page === "home" ? hero(visible[focus - 1]) : undefined}
-          next={page === "home" ? hero(visible[focus + 1]) : undefined}
+          previous={page === "home" ? hero(shown[focus - 1]) : undefined}
+          next={page === "home" ? hero(shown[focus + 1]) : undefined}
         >
           {preview && online && prefs.animatedBackgrounds && (
             <GamePreview
@@ -1337,15 +1365,12 @@ export default function App() {
                           finishTouchScroll(event.currentTarget);
                       }}
                     >
-                      {(page === "home"
-                        ? visible.slice(0, homeTiles)
-                        : visible
-                      ).map((g, i) => (
+                      {shown.map((g, i) => (
                         <Fragment key={g.id}>
                           {page === "library" &&
                             prefs.sort === "title" &&
                             (i === 0 ||
-                              titleGroup(visible[i - 1].title) !==
+                              titleGroup(shown[i - 1].title) !==
                                 titleGroup(g.title)) && (
                               <h3 className="grid-letter">
                                 {titleGroup(g.title)}
@@ -1366,6 +1391,55 @@ export default function App() {
                         </Fragment>
                       ))}
                     </div>
+                    {/* Page size on the left, the pages on the right; LT/RT turn them too. */}
+                    {page === "library" && visible.length > pageSizes[0] && (
+                      <div className="library-pager">
+                        <Picker
+                          label={t("perPage")}
+                          value={String(prefs.pageSize)}
+                          options={pageSizes.map((size) => ({
+                            value: String(size),
+                            label: t("perPageOption", { count: String(size) }),
+                          }))}
+                          onChange={(size) =>
+                            setPrefs((p) => ({
+                              ...p,
+                              pageSize: Number(size) as typeof p.pageSize,
+                            }))
+                          }
+                        />
+                        {gridPages > 1 && (
+                          <nav
+                            className="store-pager"
+                            aria-label={t("pageOf", {
+                              page: String(shownPage + 1),
+                              pages: String(gridPages),
+                            })}
+                          >
+                            <button
+                              disabled={shownPage === 0}
+                              onClick={() => goToGridPage(shownPage - 1)}
+                            >
+                              <CaretLeftIcon weight="bold" />
+                              {t("previousPage")}
+                            </button>
+                            <span>
+                              {t("pageOf", {
+                                page: String(shownPage + 1),
+                                pages: String(gridPages),
+                              })}
+                            </span>
+                            <button
+                              disabled={shownPage + 1 >= gridPages}
+                              onClick={() => goToGridPage(shownPage + 1)}
+                            >
+                              {t("nextPage")}
+                              <CaretRightIcon weight="bold" />
+                            </button>
+                          </nav>
+                        )}
+                      </div>
+                    )}
                   </section>
                 </>
               ))}
