@@ -254,6 +254,59 @@ main::before {
   position: relative;
   display: grid;
 }
+/* The shelf: recent covers in tilted rows that drift apart, blurred and dimmed so the sofa
+   stays the subject; the centre darkens most, where the sofa draws itself. */
+.boot-shelf {
+  position: absolute;
+  inset: -20% -10%;
+  display: grid;
+  align-content: center;
+  gap: 2.4vh;
+  transform: rotate(-8deg);
+  filter: blur(2px) brightness(0.5);
+}
+.boot-shelf-row {
+  display: flex;
+  justify-content: center;
+  gap: 2.4vh;
+  animation: boot-drift 3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.boot-shelf-row:nth-child(even) {
+  animation-name: boot-drift-back;
+}
+.boot-shelf img {
+  flex: 0 0 auto;
+  height: 30vh;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 12px;
+  opacity: 0;
+  transition: opacity 0.5s ease-out;
+}
+.boot-shelf img[data-loaded] {
+  opacity: 1;
+}
+.boot-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at center,
+    #0b0d12 0 12%,
+    rgb(11 13 18 / 0.75) 35%,
+    rgb(11 13 18 / 0.35) 100%
+  );
+}
+@keyframes boot-drift {
+  from {
+    transform: translateX(6vw);
+  }
+}
+@keyframes boot-drift-back {
+  from {
+    transform: translateX(-6vw);
+  }
+}
 .primary-nav {
   display: flex;
   gap: 12px;
@@ -4111,7 +4164,8 @@ footer kbd {
   .sofa-loading-arm,
   .sofa-loading-buttons > g,
   .launch-screen,
-  .launch-note {
+  .launch-note,
+  .boot-shelf-row {
     animation: none;
   }
 }

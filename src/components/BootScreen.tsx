@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useReducedMotion } from "../services";
 import { playSound } from "../sounds";
 import { SofaLoadingIcon } from "./SofaLoadingIcon";
@@ -7,12 +7,32 @@ import { SofaLoadingIcon } from "./SofaLoadingIcon";
 const PLAY = 1600;
 /** When the cushions settle: the thump lands with them. */
 const SETTLE = 880;
+/** Covers of the last session's recent games, saved by App for the next opening. */
+export const BOOT_COVERS = "boot-covers";
+const covers = (): string[] => {
+  try {
+    const saved: unknown = JSON.parse(
+      localStorage.getItem(BOOT_COVERS) ?? "[]",
+    );
+    return Array.isArray(saved)
+      ? saved
+          .filter(
+            (url): url is string =>
+              typeof url === "string" && url.startsWith("https://"),
+          )
+          .slice(0, 18)
+      : [];
+  } catch {
+    return [];
+  }
+};
 
 /**
  * Sofa switching on, once per launch: the sofa draws itself, settles into its cushions with a
  * low thump and lights its controller buttons, then flies to the logo in the header while Home
- * appears behind it. It only fills time Sofa spends starting anyway; any button, key or touch
- * skips it. With reduced motion the logo just shows and fades.
+ * appears behind it. Behind the sofa, the player's shelf: covers of their recent games drift
+ * slowly, blurred and dimmed. It only fills time Sofa spends starting anyway; any button, key or
+ * touch skips it. With reduced motion the logo just shows and fades.
  */
 export function BootScreen({
   skip,
@@ -24,6 +44,14 @@ export function BootScreen({
   const backdrop = useRef<HTMLDivElement>(null);
   const mark = useRef<HTMLSpanElement>(null);
   const reduced = useReducedMotion();
+  // Three rows of the shelf; too few covers and the plain dark backdrop looks better.
+  const shelf = useMemo(() => {
+    const list = covers();
+    if (list.length < 6) return [];
+    return [0, 1, 2].map((row) =>
+      Array.from({ length: 7 }, (_, i) => list[(row * 5 + i) % list.length]),
+    );
+  }, []);
   const leaving = useRef(false);
   const done = useRef(onDone);
   done.current = onDone;
@@ -83,7 +111,29 @@ export function BootScreen({
       aria-hidden
       onPointerDown={() => leave.current()}
     >
-      <div className="boot-backdrop" ref={backdrop} />
+      <div className="boot-backdrop" ref={backdrop}>
+        {shelf.length > 0 && (
+          <div className="boot-shelf">
+            {shelf.map((row, r) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: fixed rows that never reorder.
+              <div className="boot-shelf-row" key={r}>
+                {row.map((url, i) => (
+                  <img
+                    // biome-ignore lint/suspicious/noArrayIndexKey: a row repeats covers on purpose.
+                    key={i}
+                    src={url}
+                    alt=""
+                    decoding="async"
+                    onLoad={(event) => {
+                      event.currentTarget.dataset.loaded = "true";
+                    }}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
       <span className="boot-mark" ref={mark}>
         <SofaLoadingIcon size={132} />
       </span>

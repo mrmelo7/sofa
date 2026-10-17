@@ -14,7 +14,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { BootScreen } from "./components/BootScreen";
+import { BOOT_COVERS, BootScreen } from "./components/BootScreen";
 import { CarouselCover, Cover } from "./components/Cover";
 import { DialogFooter } from "./components/Dialog";
 import { FavoriteIcon } from "./components/FavoriteIcon";
@@ -784,6 +784,14 @@ export default function App() {
   };
   // Interface sounds: a tick only when focus actually moved, a pair on A and on B.
   useEffect(() => setSounds(prefs.sounds), [prefs.sounds]);
+  // The next opening shows this session's recent covers behind the sofa.
+  useEffect(() => {
+    const recent = filterGames(games, prefs, "all", "", true)
+      .flatMap((g) => (g.cover?.startsWith("https://") ? [g.cover] : []))
+      .slice(0, 18);
+    if (recent.length)
+      localStorage.setItem(BOOT_COVERS, JSON.stringify(recent));
+  }, [games, prefs]);
   // The opening plays once per launch; the first button only skips it.
   const [booting, setBooting] = useState(true);
   const [skipBoot, setSkipBoot] = useState(false);
