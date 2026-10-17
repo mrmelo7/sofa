@@ -4,7 +4,7 @@ use std::time::Duration;
 
 pub fn client() -> Result<Client, String> {
     Client::builder()
-        .user_agent("Sofa/0.3.31 (https://github.com/elionaimelo/sofa)")
+        .user_agent("Sofa/0.3.32 (https://github.com/elionaimelo/sofa)")
         .timeout(Duration::from_secs(15))
         .https_only(true)
         .redirect(reqwest::redirect::Policy::none())
