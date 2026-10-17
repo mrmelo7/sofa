@@ -79,10 +79,12 @@ try {
 }
 # Game Bar keeps the previous widget loaded; the package can't be replaced while it runs
 # (HRESULT 0x80073D02). Windows starts it again on the next Win+G. One retry after closing
-# everything again covers a process that was still shutting down.
+# everything again covers a process that was still shutting down. A first install replaces
+# nothing, so Game Bar stays open: a running Game Bar sees the new widget arrive and applies
+# FavoriteAfterInstall (pinned to its bar) and ActivateAfterInstall from the manifest.
 $done = $false
 foreach ($attempt in 1, 2) {
-  StopWidget $installed
+  if ($installed -or $attempt -gt 1) { StopWidget $installed }
   try {
     Add-AppxPackage -Path "$dir\Sofa.Widget.msix" -ForceUpdateFromAnyVersion -ForceApplicationShutdown -ErrorAction Stop
     $done = $true
