@@ -101,7 +101,7 @@ import {
   commandQuery,
   demo,
   desktop,
-  glideToStart,
+  glideIntoView,
   type InputRef,
   type Notify,
   navigateControls,
@@ -191,7 +191,7 @@ const Tile = memo(function Tile({
           current &&
           document.activeElement === event.currentTarget
         )
-          glideToStart(event.currentTarget);
+          glideIntoView(event.currentTarget);
       }}
     >
       {presentation === "carousel" ? (
@@ -615,8 +615,8 @@ export default function App() {
       return;
     }
     const tile = tileAt(focus);
-    // Home's row is a carousel: the focused game stays first while the row glides.
-    if (tile && !glideToStart(tile))
+    // Home's row is a carousel: it glides only when the focused game would leave the screen.
+    if (tile && !glideIntoView(tile))
       tile.scrollIntoView({
         block: "nearest",
         inline: "nearest",

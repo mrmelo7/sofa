@@ -608,13 +608,9 @@ button:active:not([aria-disabled="true"]) {
   padding: 9px 8px 20px;
   margin: 0 -8px;
   flex-shrink: 0;
-  /* The carousel stops the focused game at the padding, so its ring stays in view; a swipe
-     on the touchscreen settles on a game the same way. */
+  /* The carousel keeps the focused game this far from either edge, so its ring stays in
+     view; a swipe on the touchscreen focuses the game nearest the start. */
   scroll-padding-inline: 8px;
-  scroll-snap-type: x mandatory;
-}
-.game-row > * {
-  scroll-snap-align: start;
 }
 /* The carousel dims the games around the selected one a little: a dark veil that fades out on
    the selected game. Opacity only, so the compositor animates it. */

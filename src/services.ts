@@ -110,20 +110,21 @@ function scrollParent(
   return found;
 }
 /**
- * A carousel (Home's row) keeps the focused item first and glides to it, console style. Only
- * the row scrolls: scrollIntoView would also shift every clipped ancestor, the page included.
- * Returns false when the item isn't in a carousel.
+ * A carousel (Home's row) moves the selection across the games already on screen and glides
+ * only when the selected one would leave it, console style. Only the row scrolls:
+ * scrollIntoView would also shift every clipped ancestor, the page included. Returns false
+ * when the item isn't in a carousel.
  */
-export function glideToStart(item: HTMLElement): boolean {
+export function glideIntoView(item: HTMLElement): boolean {
   const row = item.closest<HTMLElement>("[data-carousel]");
   if (!row) return false;
   const style = getComputedStyle(row);
   const padding = Number.parseFloat(style.scrollPaddingLeft) || 0;
   // Selecting a game widens it and narrows the previous one over a transition that has only
-  // just started; aiming at today's layout overshoots and the snap pulls the row back. Aim
-  // where the item rests once it ends: every game before it at the width of an idle one.
+  // just started; aiming at today's layout overshoots. Aim where things rest once it ends:
+  // every game before it at the width of an idle one, the selected one at the widest.
   const items = [...row.children];
-  const before = items.findIndex((child) => child.contains(item));
+  const index = items.findIndex((child) => child.contains(item));
   const idle = items.find(
     (child) =>
       !child.contains(item) &&
@@ -136,22 +137,30 @@ export function glideToStart(item: HTMLElement): boolean {
             animation.transitionProperty === "flex-basis",
         ),
   );
-  const left = idle
+  const rect = item.getBoundingClientRect();
+  const start = idle
     ? (Number.parseFloat(style.paddingLeft) || 0) +
-      before *
+      index *
         (idle.getBoundingClientRect().width +
-          (Number.parseFloat(style.columnGap) || 0)) -
-      padding
-    : row.scrollLeft +
-      item.getBoundingClientRect().left -
-      row.getBoundingClientRect().left -
-      padding;
-  row.scrollTo({
-    left,
-    behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
-      ? "instant"
-      : "smooth",
-  });
+          (Number.parseFloat(style.columnGap) || 0))
+    : row.scrollLeft + rect.left - row.getBoundingClientRect().left;
+  const end = idle
+    ? start +
+      Math.max(...items.map((child) => child.getBoundingClientRect().width))
+    : start + rect.width;
+  const left =
+    start - padding < row.scrollLeft
+      ? start - padding
+      : end + padding > row.scrollLeft + row.clientWidth
+        ? end + padding - row.clientWidth
+        : null;
+  if (left !== null)
+    row.scrollTo({
+      left,
+      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+    });
   return true;
 }
 export function navigateSpatial(
@@ -260,7 +269,7 @@ export function navigateSpatial(
         entered.querySelector<HTMLElement>('[aria-current="true"]') ?? best;
     // A carousel glides on its own; the browser's focus scroll would jump there first.
     best.focus({ preventScroll: !!best.closest("[data-carousel]") });
-    if (!glideToStart(best))
+    if (!glideIntoView(best))
       best.scrollIntoView({ block: "nearest", inline: "nearest" });
     // The first control of a scrolling panel brings back what sits above it (the title).
     const box = scrollParent(best, seen);
