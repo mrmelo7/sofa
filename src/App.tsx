@@ -437,15 +437,21 @@ export default function App() {
       ),
     [games],
   );
-  // Games per store, as the store tabs show them; hidden games don't count.
-  const sourceCounts = useMemo(() => {
+  // Games per tab, as the tabs show them; hidden games don't count.
+  const tabCounts = useMemo(() => {
     const hidden = new Set(prefs.hidden);
-    const counts: Partial<Record<Game["source"], number>> = {};
+    const favorites = new Set(prefs.favorites);
+    const counts: Partial<Record<(typeof TABS)[number], number>> = {};
+    const add = (key: (typeof TABS)[number]) =>
+      (counts[key] = (counts[key] ?? 0) + 1);
     for (const game of games)
-      if (!hidden.has(game.id))
-        counts[game.source] = (counts[game.source] ?? 0) + 1;
+      if (!hidden.has(game.id)) {
+        add("all");
+        add(game.source);
+        if (favorites.has(game.id)) add("favorites");
+      }
     return counts;
-  }, [games, prefs.hidden]);
+  }, [games, prefs.hidden, prefs.favorites]);
   // A source tab disappears when its last game does; fall back to "all" without an extra render.
   const tab = availableTabs.includes(tabChoice) ? tabChoice : "all";
   // Typing stays responsive with thousands of owned games; the grid catches up a frame later.
@@ -1134,9 +1140,7 @@ export default function App() {
                                 : s === "steam"
                                   ? "Steam"
                                   : "Epic"}
-                      {s !== "all" && s !== "favorites" && (
-                        <span>{sourceCounts[s] ?? 0}</span>
-                      )}
+                      <span>{tabCounts[s] ?? 0}</span>
                     </button>
                   ))}
                   <kbd aria-hidden>RB</kbd>
