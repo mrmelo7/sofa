@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { AnimatePresence } from "motion/react";
 import {
   type CSSProperties,
@@ -279,15 +280,16 @@ export default function App() {
   const [storeModal, setStoreModal] = useState(false);
   const [storeTab, setStoreTab] = useState<StoreTab>("discover");
   const [launchScreen, setLaunchScreen] = useState<Game | null>(null);
-  // The launch screen stays until the game takes focus; launchers can take a while.
+  // The launch screen stays until the game itself is in front. Losing focus isn't enough: the
+  // launcher takes it first and Rust hands it back. Rust gives up after 90 s and says so too.
   useEffect(() => {
     if (!launchScreen) return;
     const done = () => setLaunchScreen(null);
-    const timeout = setTimeout(done, 30_000);
-    window.addEventListener("blur", done);
+    const timeout = setTimeout(done, 95_000);
+    const settled = isTauri() ? listen("launch-settled", done) : undefined;
     return () => {
       clearTimeout(timeout);
-      window.removeEventListener("blur", done);
+      settled?.then((unlisten) => unlisten());
     };
   }, [launchScreen]);
   const powerInput: InputRef = useRef(null);

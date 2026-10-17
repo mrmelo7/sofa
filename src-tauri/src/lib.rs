@@ -86,9 +86,11 @@ pub(crate) fn foreground() -> Option<(String, windows_sys::Win32::Foundation::HW
 
 /// After a launch request, the launcher (Steam, Epic…) jumps in front of Sofa. Push it down and
 /// bring Sofa back until the game itself takes the foreground, so closing the game returns to
-/// Sofa. Gives up after 90 s or as soon as anything else (the game, the user) is in front.
+/// Sofa. Gives up after 90 s or as soon as anything else (the game, the user) is in front, and
+/// then tells the launch screen with `launch-settled`.
 #[cfg(windows)]
 pub(crate) fn keep_sofa_in_front(app: tauri::AppHandle) {
+    use tauri::Emitter;
     use windows_sys::Win32::UI::WindowsAndMessaging::{SW_MINIMIZE, ShowWindow};
     std::thread::spawn(move || {
         let started = std::time::Instant::now();
@@ -100,12 +102,13 @@ pub(crate) fn keep_sofa_in_front(app: tauri::AppHandle) {
             }
             if !is_launcher(&exe) {
                 log::info(&app, format!("launch: {exe} took the foreground"));
-                return;
+                break;
             }
             // The launcher's own window, just reported by Windows.
             unsafe { ShowWindow(hwnd, SW_MINIMIZE) };
             let _ = bring_to_front(&app);
         }
+        let _ = app.emit("launch-settled", ());
     });
 }
 #[cfg(not(windows))]
