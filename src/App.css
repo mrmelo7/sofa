@@ -365,6 +365,14 @@ main::before {
   max-width: 680px;
   text-wrap: balance;
 }
+/* Home's title stays on one line, so a long name never pushes the row down; the game page
+   shows it in full. */
+.page-home .hero-copy h1 {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .hero-copy p {
   color: #d0d3da;
   font-size: 16px;
