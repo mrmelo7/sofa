@@ -23,32 +23,101 @@ fn init_winrt() {
     }
 }
 
+/// Bluetooth devices for each selector, as Windows reports them while it looks, for at most
+/// `timeout`. The selectors name association endpoints, which a plain `FindAllAsync` (device
+/// interfaces) never returns; and a watcher can be cut short instead of waiting out a slow
+/// Bluetooth inquiry.
+#[cfg(windows)]
+fn endpoints(
+    selectors: &[windows::core::Result<windows::core::HSTRING>],
+    timeout: std::time::Duration,
+) -> Result<Vec<Vec<windows::Devices::Enumeration::DeviceInformation>>, String> {
+    use std::sync::{Arc, mpsc};
+    use windows::Devices::Enumeration::{DeviceInformation, DeviceInformationKind, DeviceInformationUpdate};
+    use windows::Foundation::TypedEventHandler;
+    use windows::core::{IInspectable, Ref};
+    init_winrt();
+    let unavailable = |_| "settingUnavailable".to_string();
+    let (done, finished) = mpsc::channel();
+    let mut watchers = Vec::new();
+    for selector in selectors {
+        let selector = selector.as_ref().map_err(|_| "settingUnavailable")?;
+        let watcher = DeviceInformation::CreateWatcherWithKindAqsFilterAndAdditionalProperties(
+            selector,
+            None,
+            DeviceInformationKind::AssociationEndpoint,
+        )
+        .map_err(unavailable)?;
+        let found = Arc::new(Mutex::new(Vec::new()));
+        let sink = found.clone();
+        watcher
+            .Added(&TypedEventHandler::new(move |_, info: Ref<DeviceInformation>| {
+                if let (Some(info), Ok(mut list)) = (info.as_ref(), sink.lock()) {
+                    list.push(info.clone());
+                }
+                Ok(())
+            }))
+            .map_err(unavailable)?;
+        // Without an Updated handler some watchers never report Added or completion.
+        watcher
+            .Updated(&TypedEventHandler::new(|_, _: Ref<DeviceInformationUpdate>| Ok(())))
+            .map_err(unavailable)?;
+        let done = done.clone();
+        watcher
+            .EnumerationCompleted(&TypedEventHandler::new(move |_, _: Ref<IInspectable>| {
+                let _ = done.send(());
+                Ok(())
+            }))
+            .map_err(unavailable)?;
+        watcher.Start().map_err(unavailable)?;
+        watchers.push((watcher, found));
+    }
+    let deadline = std::time::Instant::now() + timeout;
+    for _ in 0..watchers.len() {
+        let left = deadline.saturating_duration_since(std::time::Instant::now());
+        if finished.recv_timeout(left).is_err() {
+            break;
+        }
+    }
+    Ok(watchers
+        .into_iter()
+        .map(|(watcher, found)| {
+            let _ = watcher.Stop();
+            found.lock().map(|list| list.clone()).unwrap_or_default()
+        })
+        .collect())
+}
+
 /// Unpaired classic and Low Energy devices in range; controllers must be in pairing mode.
 #[cfg(windows)]
 fn scan() -> Result<Vec<Found>, String> {
     use windows::Devices::Bluetooth::{BluetoothDevice, BluetoothLEDevice};
-    use windows::Devices::Enumeration::DeviceInformation;
-    init_winrt();
     let selectors = [
         BluetoothDevice::GetDeviceSelectorFromPairingState(false),
         BluetoothLEDevice::GetDeviceSelectorFromPairingState(false),
     ];
-    let mut found = Vec::new();
-    for selector in selectors {
-        let selector = selector.map_err(|_| "settingUnavailable")?;
-        let devices = DeviceInformation::FindAllAsyncAqsFilter(&selector)
-            .and_then(|operation| operation.join())
-            .map_err(|_| "settingUnavailable")?;
-        for index in 0..devices.Size().map_err(|_| "settingUnavailable")? {
-            let Ok(device) = devices.GetAt(index) else { continue };
-            let name = device.Name().map(|n| n.to_string()).unwrap_or_default();
-            let id = device.Id().map(|i| i.to_string()).unwrap_or_default();
-            if !name.trim().is_empty() && !id.is_empty() {
-                found.push(Found { id, name: name.trim().to_owned() });
-            }
-        }
-    }
+    let found = endpoints(&selectors, std::time::Duration::from_secs(10))?
+        .into_iter()
+        .flatten()
+        .filter_map(|device| {
+            let name = device.Name().ok()?.to_string();
+            let id = device.Id().ok()?.to_string();
+            (!name.trim().is_empty() && !id.is_empty()).then(|| Found { id, name: name.trim().to_owned() })
+        })
+        .collect();
     Ok(dedup(found))
+}
+
+/// The endpoint behind an id from `endpoints`.
+#[cfg(windows)]
+fn endpoint(id: &str) -> windows::core::Result<windows::Devices::Enumeration::DeviceInformation> {
+    use windows::Devices::Enumeration::{DeviceInformation, DeviceInformationKind};
+    DeviceInformation::CreateFromIdAsyncWithKindAndAdditionalProperties(
+        &windows::core::HSTRING::from(id),
+        None,
+        DeviceInformationKind::AssociationEndpoint,
+    )?
+    .join()
 }
 
 #[cfg(any(windows, test))]
@@ -61,15 +130,12 @@ fn dedup(mut found: Vec<Found>) -> Vec<Found> {
 #[cfg(windows)]
 fn pair(id: &str) -> Result<(), String> {
     use windows::Devices::Enumeration::{
-        DeviceInformation, DevicePairingKinds, DevicePairingRequestedEventArgs, DevicePairingResultStatus,
+        DevicePairingKinds, DevicePairingRequestedEventArgs, DevicePairingResultStatus,
     };
     use windows::Foundation::TypedEventHandler;
-    use windows::core::HSTRING;
     init_winrt();
     let failed = |_| "bluetoothPairFailed".to_string();
-    let device = DeviceInformation::CreateFromIdAsync(&HSTRING::from(id))
-        .and_then(|operation| operation.join())
-        .map_err(failed)?;
+    let device = endpoint(id).map_err(failed)?;
     let custom = device.Pairing().and_then(|p| p.Custom()).map_err(failed)?;
     // Controllers pair without a code ("just works") or ask only for confirmation.
     let token = custom
@@ -107,21 +173,23 @@ fn paired() -> Result<Vec<Paired>, String> {
         BluetoothConnectionStatus, BluetoothDevice, BluetoothLEAppearanceCategories,
         BluetoothLEAppearanceSubcategories, BluetoothLEDevice, BluetoothMajorClass,
     };
-    use windows::Devices::Enumeration::DeviceInformation;
     init_winrt();
     let unavailable = |_| "settingUnavailable".to_string();
-    let list = |selector: windows::core::Result<windows::core::HSTRING>| -> Result<Vec<String>, String> {
-        let devices = DeviceInformation::FindAllAsyncAqsFilter(&selector.map_err(unavailable)?)
-            .and_then(|operation| operation.join())
-            .map_err(unavailable)?;
-        Ok((0..devices.Size().map_err(unavailable)?)
-            .filter_map(|index| devices.GetAt(index).and_then(|d| d.Id()).ok().map(|id| id.to_string()))
-            .collect())
+    // Paired devices are already known to Windows; listing them is quick.
+    let lists = endpoints(
+        &[
+            BluetoothDevice::GetDeviceSelectorFromPairingState(true),
+            BluetoothLEDevice::GetDeviceSelectorFromPairingState(true),
+        ],
+        std::time::Duration::from_secs(5),
+    )?;
+    let ids = |index: usize| -> Vec<String> {
+        lists.get(index).into_iter().flatten().filter_map(|d| d.Id().ok().map(|id| id.to_string())).collect()
     };
     let mut found = Vec::new();
     // Classic Bluetooth (DualSense, most third-party pads): a peripheral whose minor class
     // is joystick (1) or gamepad (2); the upper bits only add keyboard or pointer.
-    for id in list(BluetoothDevice::GetDeviceSelectorFromPairingState(true))? {
+    for id in ids(0) {
         let Ok(device) = BluetoothDevice::FromIdAsync(&id.as_str().into()).and_then(|o| o.join()) else { continue };
         let Ok(class) = device.ClassOfDevice() else { continue };
         let gamepad = class.MajorClass().is_ok_and(|major| major == BluetoothMajorClass::Peripheral)
@@ -134,7 +202,7 @@ fn paired() -> Result<Vec<Paired>, String> {
     // Bluetooth Low Energy (Xbox controllers): HID appearance, gamepad or joystick.
     let hid = BluetoothLEAppearanceCategories::HumanInterfaceDevice().map_err(unavailable)?;
     let kinds = [BluetoothLEAppearanceSubcategories::Gamepad(), BluetoothLEAppearanceSubcategories::Joystick()];
-    for id in list(BluetoothLEDevice::GetDeviceSelectorFromPairingState(true))? {
+    for id in ids(1) {
         let Ok(device) = BluetoothLEDevice::FromIdAsync(&id.as_str().into()).and_then(|o| o.join()) else { continue };
         let Ok(appearance) = device.Appearance() else { continue };
         let gamepad = appearance.Category().is_ok_and(|c| c == hid)
@@ -153,11 +221,10 @@ fn paired() -> Result<Vec<Paired>, String> {
 
 #[cfg(windows)]
 fn unpair(id: &str) -> Result<(), String> {
-    use windows::Devices::Enumeration::{DeviceInformation, DeviceUnpairingResultStatus};
+    use windows::Devices::Enumeration::DeviceUnpairingResultStatus;
     init_winrt();
     let failed = |_| "bluetoothUnpairFailed".to_string();
-    let status = DeviceInformation::CreateFromIdAsync(&id.into())
-        .and_then(|operation| operation.join())
+    let status = endpoint(id)
         .and_then(|device| device.Pairing())
         .and_then(|pairing| pairing.UnpairAsync())
         .and_then(|operation| operation.join())
