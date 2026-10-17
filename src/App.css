@@ -237,6 +237,23 @@ main::before {
   place-items: center;
   height: 100%;
 }
+/* The opening: the sofa over a dark backdrop that fades to reveal Home. */
+.boot-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+}
+.boot-backdrop {
+  position: absolute;
+  inset: 0;
+  background: #0b0d12;
+}
+.boot-mark {
+  position: relative;
+  display: grid;
+}
 .primary-nav {
   display: flex;
   gap: 12px;

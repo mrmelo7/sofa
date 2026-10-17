@@ -14,6 +14,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { BootScreen } from "./components/BootScreen";
 import { CarouselCover, Cover } from "./components/Cover";
 import { DialogFooter } from "./components/Dialog";
 import { FavoriteIcon } from "./components/FavoriteIcon";
@@ -783,7 +784,14 @@ export default function App() {
   };
   // Interface sounds: a tick only when focus actually moved, a pair on A and on B.
   useEffect(() => setSounds(prefs.sounds), [prefs.sounds]);
+  // The opening plays once per launch; the first button only skips it.
+  const [booting, setBooting] = useState(true);
+  const [skipBoot, setSkipBoot] = useState(false);
   useInput((a) => {
+    if (booting) {
+      setSkipBoot(true);
+      return;
+    }
     const before = document.activeElement;
     onAction(a);
     if (a === "a") playSound("select");
@@ -1660,6 +1668,9 @@ export default function App() {
             )}
           </HintBar>
         </footer>
+        {booting && (
+          <BootScreen skip={skipBoot} onDone={() => setBooting(false)} />
+        )}
         {launchScreen && (
           <LaunchScreen
             game={launchScreen}

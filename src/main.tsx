@@ -33,6 +33,7 @@ const queryClient = new QueryClient({
 
 // Each window (main, HUD, Game Bar widget) announces its language, not the HTML default.
 document.documentElement.lang = initialLang();
+const hud = new URLSearchParams(location.search).get("hud") === "1";
 // Icons sit next to text or inside labelled buttons: hide them from screen readers.
 const iconDefaults = { "aria-hidden": true } as const;
 
@@ -42,16 +43,14 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
       <IconContext.Provider value={iconDefaults}>
         <Suspense
           fallback={
+            // The main window's opening draws the sofa itself; drawing it here first would
+            // play the animation twice.
             <div className="app-loading" role="status" aria-label="Sofa">
-              <SofaLoadingIcon size={96} />
+              {hud && <SofaLoadingIcon size={96} />}
             </div>
           }
         >
-          {new URLSearchParams(location.search).get("hud") === "1" ? (
-            <Hud />
-          ) : (
-            <App />
-          )}
+          {hud ? <Hud /> : <App />}
           <ControllerKeyboard />
         </Suspense>
       </IconContext.Provider>

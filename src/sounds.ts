@@ -1,8 +1,9 @@
 /**
  * Interface sounds, console style: short, quiet blips synthesized on the fly, so there are no
- * audio files to ship. A tick when focus moves, a rising pair on A, a falling pair on B.
+ * audio files to ship. A tick when focus moves, a rising pair on A, a falling pair on B, and a
+ * low, warm pair when Sofa switches on.
  */
-type Sound = "move" | "select" | "back";
+type Sound = "move" | "select" | "back" | "boot";
 /** Frequency (Hz) and length (s) of each note. */
 const notes: Record<Sound, [number, number][]> = {
   move: [[1400, 0.03]],
@@ -13,6 +14,10 @@ const notes: Record<Sound, [number, number][]> = {
   back: [
     [740, 0.045],
     [494, 0.07],
+  ],
+  boot: [
+    [196, 0.1],
+    [294, 0.22],
   ],
 };
 let context: AudioContext | null = null;
