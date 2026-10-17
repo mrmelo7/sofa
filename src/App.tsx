@@ -85,7 +85,7 @@ import {
 } from "./features/GameDetails";
 import { Onboarding } from "./features/Onboarding";
 import { PowerMenu, TopBatteries, usePower } from "./features/Power";
-import { Search } from "./features/Search";
+import { Search, type SettingsShortcut } from "./features/Search";
 import {
   AppearanceSettings,
   AppsSettings,
@@ -673,6 +673,65 @@ export default function App() {
   const openHud = () => {
     if (!hudLaunch.isPending) hudLaunch.mutate();
   };
+  // The Settings cards, by how often a player needs them, also offered by the search
+  // (Spotlight-style).
+  const settingsShortcuts: SettingsShortcut[] = [
+    {
+      id: "controllers",
+      Icon: BluetoothIcon,
+      label: t("controllers"),
+      description: t("settingsControllersDescription"),
+      open: () => setSettings("controllers"),
+    },
+    {
+      id: "hud",
+      Icon: GaugeIcon,
+      label: t("hud"),
+      description: t("settingsPerformanceDescription"),
+      open: openHud,
+    },
+    {
+      id: "library",
+      Icon: SquaresFourIcon,
+      label: t("librarySettings"),
+      description: t("settingsLibraryDescription"),
+      open: () => setSettings("library"),
+    },
+    {
+      id: "storage",
+      Icon: HardDrivesIcon,
+      label: t("storage"),
+      description: t("settingsStorageDescription"),
+      external: true,
+      open: () =>
+        void desktop("open_storage_settings").catch((error) =>
+          notify(serviceError(error)),
+        ),
+    },
+    {
+      id: "appearance",
+      Icon: GearSixIcon,
+      label: t("appearance"),
+      description: t("settingsAppearanceDescription"),
+      open: () => setSettings("appearance"),
+    },
+    {
+      id: "apps",
+      Icon: AppWindowIcon,
+      label: t("apps"),
+      description: t("settingsAppsDescription"),
+      open: () => setSettings("apps"),
+    },
+    {
+      id: "updates",
+      Icon: ArrowRightIcon,
+      label: t("updates"),
+      description: update
+        ? t("updateAvailable", { version: update.version })
+        : t("settingsUpdatesDescription"),
+      open: () => setSettings("updates"),
+    },
+  ];
   const installGame = async (game: Game) => {
     if (game.installed) return;
     if (demo || !isTauri()) {
@@ -991,10 +1050,10 @@ export default function App() {
                   event.currentTarget.getBoundingClientRect();
                 setSearchOpen(true);
               }}
-              aria-label={t("searchGames")}
+              aria-label={t("search")}
               aria-haspopup="dialog"
               aria-expanded={searchOpen}
-              title={t("searchGames")}
+              title={t("search")}
             >
               <MagnifyingGlassIcon />
             </button>
@@ -1475,86 +1534,40 @@ export default function App() {
                   <p>{t("settingsHubIntro")}</p>
                 </div>
                 <div className="settings-hub-grid">
-                  <button
-                    onClick={() => {
-                      setSettings("library");
-                    }}
-                  >
-                    <SquaresFourIcon aria-hidden />
-                    <strong>{t("librarySettings")}</strong>
-                    <span>{t("settingsLibraryDescription")}</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSettings("apps");
-                    }}
-                  >
-                    <AppWindowIcon aria-hidden />
-                    <strong>{t("apps")}</strong>
-                    <span>{t("settingsAppsDescription")}</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSettings("appearance");
-                    }}
-                  >
-                    <GearSixIcon aria-hidden />
-                    <strong>{t("appearance")}</strong>
-                    <span>{t("settingsAppearanceDescription")}</span>
-                  </button>
-                  <button onClick={openHud}>
-                    <GaugeIcon aria-hidden />
-                    <strong>{t("hud")}</strong>
-                    <span>{t("settingsPerformanceDescription")}</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSettings("controllers");
-                    }}
-                  >
-                    <BluetoothIcon aria-hidden />
-                    <strong>{t("controllers")}</strong>
-                    <span>{t("settingsControllersDescription")}</span>
-                  </button>
-                  <button
-                    onClick={() =>
-                      void desktop("open_storage_settings").catch((error) =>
-                        notify(serviceError(error)),
-                      )
-                    }
-                  >
-                    <HardDrivesIcon aria-hidden />
-                    <ArrowSquareOutIcon className="external" aria-hidden />
-                    <strong>{t("storage")}</strong>
-                    <span>
-                      {storage.data?.length
-                        ? storage.data.map((disk) => (
-                            <Fragment key={disk.name}>
-                              {t("storageFree", {
-                                name: disk.name,
-                                free: gb(disk.available),
-                                total: gb(disk.total),
-                              })}
-                              <br />
-                            </Fragment>
-                          ))
-                        : t("settingsStorageDescription")}
-                    </span>
-                  </button>
-                  <button
-                    className={update ? "has-update" : undefined}
-                    onClick={() => {
-                      setSettings("updates");
-                    }}
-                  >
-                    <ArrowRightIcon aria-hidden />
-                    <strong>{t("updates")}</strong>
-                    <span>
-                      {update
-                        ? t("updateAvailable", { version: update.version })
-                        : t("settingsUpdatesDescription")}
-                    </span>
-                  </button>
+                  {settingsShortcuts.map(
+                    ({ id, Icon, label, description, external, open }) => (
+                      <button
+                        key={id}
+                        className={
+                          id === "updates" && update ? "has-update" : undefined
+                        }
+                        onClick={open}
+                      >
+                        <Icon aria-hidden />
+                        {external && (
+                          <ArrowSquareOutIcon
+                            className="external"
+                            aria-hidden
+                          />
+                        )}
+                        <strong>{label}</strong>
+                        <span>
+                          {id === "storage" && storage.data?.length
+                            ? storage.data.map((disk) => (
+                                <Fragment key={disk.name}>
+                                  {t("storageFree", {
+                                    name: disk.name,
+                                    free: gb(disk.available),
+                                    total: gb(disk.total),
+                                  })}
+                                  <br />
+                                </Fragment>
+                              ))
+                            : description}
+                        </span>
+                      </button>
+                    ),
+                  )}
                 </div>
               </section>
             )}
@@ -1594,6 +1607,11 @@ export default function App() {
             t={t}
             lang={lang}
             input={searchInput}
+            settings={settingsShortcuts}
+            onSetting={(shortcut) => {
+              setSearchOpen(false);
+              shortcut.open();
+            }}
             onClose={() => setSearchOpen(false)}
             onOpen={(game) => {
               detailOrigin.current = captureGameOrigin(game.id);

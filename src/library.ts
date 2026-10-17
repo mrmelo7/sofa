@@ -387,7 +387,7 @@ export const activeFilters = (f: LibraryFilters) =>
   Number(f.favoritesOnly) +
   Number(f.played !== "any") +
   Number(f.artwork !== "any");
-const fold = (text: string) =>
+export const fold = (text: string) =>
   text
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")

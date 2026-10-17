@@ -1,5 +1,6 @@
 import {
   ArrowRightIcon,
+  type Icon,
   MagnifyingGlassIcon,
   XIcon,
 } from "@phosphor-icons/react";
@@ -12,14 +13,30 @@ import type { Lang, Translate } from "../i18n";
 import {
   defaultFilters,
   filterGames,
+  fold,
   type Game,
   type Preferences,
 } from "../library";
 import { type InputRef, navigateSpatial, useFeatureInput } from "../services";
 
-/** Search the whole library without changing the page or its filters behind the dialog. */
+/** A Settings card the search can open, matched on its name and description. */
+export type SettingsShortcut = {
+  id: string;
+  Icon: Icon;
+  label: string;
+  description: string;
+  external?: boolean;
+  open: () => void;
+};
+
+/**
+ * Search the whole library, and Settings like Spotlight, without changing the page or its
+ * filters behind the dialog.
+ */
 export function Search({
   games,
+  settings,
+  onSetting,
   prefs,
   initialQuery,
   loading,
@@ -32,6 +49,8 @@ export function Search({
   origin,
 }: {
   games: Game[];
+  settings: SettingsShortcut[];
+  onSetting: (shortcut: SettingsShortcut) => void;
   prefs: Preferences;
   initialQuery: string;
   loading: boolean;
@@ -60,12 +79,18 @@ export function Search({
       ),
     [games, prefs, deferred],
   );
+  const q = fold(deferred.trim());
+  const settingResults = q
+    ? settings
+        .filter((s) => fold(`${s.label} ${s.description}`).includes(q))
+        .slice(0, 3)
+    : [];
   useFeatureInput(input, (action) => {
     if (action === "b") close();
     else navigateSpatial(action, root.current?.closest("dialog") ?? null);
   });
   return (
-    <Dialog label={t("searchGames")} onClose={onClose} origin={origin}>
+    <Dialog label={t("search")} onClose={onClose} origin={origin}>
       <div className="spotlight" ref={root}>
         <div className="spotlight-search">
           <MagnifyingGlassIcon aria-hidden />
@@ -74,7 +99,7 @@ export function Search({
             name="game-search"
             data-initial-focus
             placeholder={`${t("searchHint")}…`}
-            aria-label={t("searchGames")}
+            aria-label={t("search")}
             enterKeyHint="search"
             onChange={(event) => setQuery(event.target.value)}
             onClear={() => setQuery("")}
@@ -88,6 +113,9 @@ export function Search({
               } else if (event.key === "Enter" && results[0]) {
                 event.preventDefault();
                 onOpen(results[0]);
+              } else if (event.key === "Enter" && settingResults[0]) {
+                event.preventDefault();
+                onSetting(settingResults[0]);
               }
             }}
           />
@@ -105,13 +133,16 @@ export function Search({
           </div>
         ) : (
           <>
-            <h2 className="spotlight-heading" role="status">
-              {query.trim()
-                ? t("searchResults", {
-                    count: new Intl.NumberFormat(lang).format(results.length),
-                  })
-                : t("library")}
-            </h2>
+            {/* Only Settings matched: their heading alone, no "0 results" above it. */}
+            {(results.length > 0 || settingResults.length === 0) && (
+              <h2 className="spotlight-heading" role="status">
+                {query.trim()
+                  ? t("searchResults", {
+                      count: new Intl.NumberFormat(lang).format(results.length),
+                    })
+                  : t("library")}
+              </h2>
+            )}
             {results.length > 0 ? (
               <div className="spotlight-results">
                 {results.slice(0, 6).map((game) => (
@@ -141,9 +172,34 @@ export function Search({
                 ))}
               </div>
             ) : (
-              <p className="spotlight-empty">
-                {t(query.trim() ? "noMatches" : "noGames")}
-              </p>
+              settingResults.length === 0 && (
+                <p className="spotlight-empty">
+                  {t(query.trim() ? "noMatches" : "noGames")}
+                </p>
+              )
+            )}
+            {settingResults.length > 0 && (
+              <>
+                <h2 className="spotlight-heading">{t("settings")}</h2>
+                <div className="spotlight-results">
+                  {settingResults.map((shortcut) => (
+                    <button
+                      className="spotlight-result"
+                      key={shortcut.id}
+                      onClick={() => onSetting(shortcut)}
+                    >
+                      <span className="spotlight-cover spotlight-icon">
+                        <shortcut.Icon aria-hidden />
+                      </span>
+                      <span className="spotlight-game">
+                        <strong>{shortcut.label}</strong>
+                        <span>{shortcut.description}</span>
+                      </span>
+                      <ArrowRightIcon aria-hidden />
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
             {results.length > 0 && (
               <button
