@@ -117,13 +117,37 @@ function scrollParent(
 export function glideToStart(item: HTMLElement): boolean {
   const row = item.closest<HTMLElement>("[data-carousel]");
   if (!row) return false;
-  const padding =
-    Number.parseFloat(getComputedStyle(row).scrollPaddingLeft) || 0;
-  row.scrollBy({
-    left:
+  const style = getComputedStyle(row);
+  const padding = Number.parseFloat(style.scrollPaddingLeft) || 0;
+  // Selecting a game widens it and narrows the previous one over a transition that has only
+  // just started; aiming at today's layout overshoots and the snap pulls the row back. Aim
+  // where the item rests once it ends: every game before it at the width of an idle one.
+  const items = [...row.children];
+  const before = items.findIndex((child) => child.contains(item));
+  const idle = items.find(
+    (child) =>
+      !child.contains(item) &&
+      child.getAttribute("aria-current") !== "true" &&
+      !child
+        .getAnimations()
+        .some(
+          (animation) =>
+            animation instanceof CSSTransition &&
+            animation.transitionProperty === "flex-basis",
+        ),
+  );
+  const left = idle
+    ? (Number.parseFloat(style.paddingLeft) || 0) +
+      before *
+        (idle.getBoundingClientRect().width +
+          (Number.parseFloat(style.columnGap) || 0)) -
+      padding
+    : row.scrollLeft +
       item.getBoundingClientRect().left -
       row.getBoundingClientRect().left -
-      padding,
+      padding;
+  row.scrollTo({
+    left,
     behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
       ? "instant"
       : "smooth",
@@ -234,7 +258,8 @@ export function navigateSpatial(
     if (entered && !entered.contains(current))
       best =
         entered.querySelector<HTMLElement>('[aria-current="true"]') ?? best;
-    best.focus();
+    // A carousel glides on its own; the browser's focus scroll would jump there first.
+    best.focus({ preventScroll: !!best.closest("[data-carousel]") });
     if (!glideToStart(best))
       best.scrollIntoView({ block: "nearest", inline: "nearest" });
     // The first control of a scrolling panel brings back what sits above it (the title).
