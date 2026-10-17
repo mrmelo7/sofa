@@ -3843,7 +3843,7 @@ dependencies = [
 
 [[package]]
 name = "sofa"
-version = "0.3.33"
+version = "0.3.34"
 dependencies = [
  "flate2",
  "hidapi",
