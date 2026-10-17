@@ -3856,23 +3856,27 @@ footer kbd {
 }
 .sofa-loading-cushions {
   transform-origin: center bottom;
-  animation: sofa-settle 0.38s cubic-bezier(0.2, 0.8, 0.2, 1) 0.88s both;
+  animation:
+    sofa-settle 0.38s cubic-bezier(0.2, 0.8, 0.2, 1) 0.88s both,
+    sofa-bounce 2.4s ease-out 1.3s infinite;
 }
 .sofa-loading-arm {
   transform-origin: center 85%;
-  animation: sofa-rumble 3.2s linear 1.3s infinite;
+  animation: sofa-rumble 2.4s linear 1.3s infinite;
 }
 .sofa-loading-buttons > g {
-  animation: sofa-button-wake 0.32s ease-out 0.95s both;
+  animation:
+    sofa-button-wake 0.32s ease-out 0.95s both,
+    sofa-button-pulse 2.4s ease-out 1.3s infinite;
 }
 .sofa-loading-buttons > g:nth-child(2) {
-  animation-delay: 1.03s;
+  animation-delay: 1.03s, 1.38s;
 }
 .sofa-loading-buttons > g:nth-child(3) {
-  animation-delay: 1.11s;
+  animation-delay: 1.11s, 1.46s;
 }
 .sofa-loading-buttons > g:nth-child(4) {
-  animation-delay: 1.19s;
+  animation-delay: 1.19s, 1.54s;
 }
 @keyframes sofa-draw {
   from {
@@ -3911,23 +3915,47 @@ footer kbd {
     transform: translateY(-0.5px) scale(0.998, 1.008);
   }
 }
-/* A brief motor pulse, then a long rest; only the controller arms move. */
+/* The waiting loop: a motor pulse in the arms, a bounce in the cushions and the buttons
+   lighting in turn, then a rest. */
 @keyframes sofa-rumble {
   0%,
-  12%,
+  14%,
   100% {
     transform: none;
   }
   2%,
-  6% {
+  7% {
+    transform: translateX(-1.6px) rotate(-2deg);
+  }
+  4.5%,
+  9.5% {
+    transform: translateX(1.6px) rotate(2deg);
+  }
+  12% {
     transform: translateX(-0.8px) rotate(-1deg);
   }
-  4%,
-  8% {
-    transform: translateX(0.8px) rotate(1deg);
+}
+@keyframes sofa-bounce {
+  0%,
+  18%,
+  100% {
+    transform: none;
   }
-  10% {
-    transform: translateX(-0.4px) rotate(-0.5deg);
+  7% {
+    transform: translateY(2px) scale(1.012, 0.96);
+  }
+  13% {
+    transform: translateY(-1px) scale(0.998, 1.012);
+  }
+}
+@keyframes sofa-button-pulse {
+  0%,
+  16%,
+  100% {
+    transform: none;
+  }
+  8% {
+    transform: scale(1.18);
   }
 }
 @keyframes sofa-button-wake {

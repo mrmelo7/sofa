@@ -1,6 +1,6 @@
 import { useId } from "react";
 
-/** Draws once, settles into its cushions, then gives a quiet controller rumble. */
+/** Draws once, settles into its cushions, then rumbles, bounces and lights its buttons on a loop. */
 export function SofaLoadingIcon({ size = 72 }: { size?: number }) {
   const id = useId();
   return (
